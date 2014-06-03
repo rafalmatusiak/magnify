@@ -19,14 +19,20 @@ private[services] final class ClassAndImportsParser extends Parser {
 
   val logger = Logger(classOf[ClassAndImportsParser].getSimpleName)
 
-  override def apply(input: InputStream): Seq[Ast] =
+  override def apply(inputs: Seq[(String, InputStream)]) =
+    for {
+      (name, input) <- inputs
+      ast <- ast(input)
+    } yield ast
+
+  private def ast(input: InputStream): Seq[(Ast, String)] =
     parse(input) match {
       case Some(unit) =>
         val imports = getImports(unit)
         val prefix = packagePrefix(unit)
         for {
           className <- getClassNames(unit)
-        } yield Ast(imports, (prefix :+ className).mkString("."))
+        } yield (Ast(imports, (prefix :+ className).mkString("."), Seq()), unit.toString)
       case None =>
         Seq()
     }

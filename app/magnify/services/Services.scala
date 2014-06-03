@@ -10,7 +10,8 @@ import magnify.features.{Parser, Imports}
  */
 final class Services extends AbstractModule {
   def configure() {
-    bind(classOf[Parser]).toConstructor(constructor[ClassAndImportsParser])
+    //bind(classOf[Parser]).toConstructor(constructor[ClassAndImportsParser])
+    bind(classOf[Parser]).toConstructor(constructor[JavacParser])
     bind(classOf[Imports]).toConstructor(constructor[ExplicitProjectImports])
   }
 }

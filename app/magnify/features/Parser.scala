@@ -5,5 +5,6 @@ import magnify.model.Ast
 
 /**
  * @author Cezary Bartoszuk (cezarybartoszuk@gmail.com)
+ * @author Rafal Matusiak (rafal.matusiak@gmail.com)
  */
-trait Parser extends (InputStream => Seq[Ast])
+trait Parser extends (Seq[(String, InputStream)] => Seq[(Ast, String)])

@@ -27,15 +27,15 @@ private[features] final class GraphSources (parse: Parser, imports: Imports) ext
     importedGraphs += name -> graph
   }
 
-  private def classesFrom(file: Archive): Seq[(Ast, String)] = file.extract {
-    (name, content) =>
-      if (isJavaFile(name) ) {
-        val stringContent = inputStreamToString(content)
-        for (ast <- parse(new ByteArrayInputStream(stringContent.getBytes("UTF-8")))) yield (ast, stringContent)
-      } else {
-        Seq()
-      }
-  }
+  private def classesFrom(file: Archive): Seq[(Ast, String)] = parse(file.extract {
+      (name, content) =>
+        if (isJavaFile(name) ) {
+          val stringContent = inputStreamToString(content)
+          Seq((name, new ByteArrayInputStream(stringContent.getBytes("UTF-8"))))
+        } else {
+          Seq()
+        }
+    })
 
   private def inputStreamToString(is: InputStream) = {
     val rd: BufferedReader = new BufferedReader(new InputStreamReader(is, "UTF-8"))

@@ -1,6 +1,7 @@
 import sbt._
 import sbt.Keys._
 import scala._
+import Stream._
 
 object ApplicationBuild extends Build {
   val appName         = "magnify"
@@ -32,12 +33,30 @@ object ApplicationBuild extends Build {
       "asm" % "asm-all" % "3.3"
     )
 
+  private val jdkToolsJar: Option[File] = {
+    def jdkToolsJar(home: File): Option[File] =
+      ((home / "lib/tools.jar") #::
+        (home / "../lib/tools.jar") #::
+        (home / "Classes/classes.jar") #::
+        (home / "../Classes/classes.jar") #:: Stream.empty[File])
+        .find(_.exists())
+
+    (for {
+      homeOption <- sys.props.lift("java.home") #:: sys.env.lift("JAVA_HOME") #:: Stream.empty[Option[String]]
+      home <- homeOption
+      jdkToolsJar <- jdkToolsJar(file(home))
+    } yield jdkToolsJar).headOption
+  }
+
+
   val main = play.Project(appName, appVersion, appDependencies).settings(
     testOptions in Test := Nil,
     scalacOptions ++= Seq("-deprecation", "-unchecked"),
     resolvers ++= Seq(
       "Maven Central" at "http://repo1.maven.org/maven2",
       "Typesafe releases" at "http://repo.typesafe.com/typesafe/releases/",
-      "OSS Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/")
+      "OSS Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"),
+    unmanagedJars in Compile := jdkToolsJar.fold(Seq[Attributed[File]]())(f => Seq(Attributed.blank(f))),
+    unmanagedJars in Runtime := jdkToolsJar.fold(Seq[Attributed[File]]())(f => Seq(Attributed.blank(f)))
   )
 }
