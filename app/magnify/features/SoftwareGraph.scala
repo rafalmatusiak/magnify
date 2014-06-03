@@ -30,6 +30,7 @@ object SoftwareGraph {
     private def build(classes: Iterable[(Ast, String)], imports: Imports) {
       addClasses(classes)
       addImports(classes.map(_._1), imports)
+      addCalls(classes.map(_._1))
       addPackages()
     }
 
@@ -40,6 +41,7 @@ object SoftwareGraph {
 
     private def calculateTransitiveClosure() {
       liftToPackage("imports")
+      liftToPackage("calls")
     }
 
     private def calculateMetrics() {
@@ -110,15 +112,33 @@ object SoftwareGraph {
       }
     }
 
-    def addRuntimeCalls(calls: Iterable[((String, String), Int)]) {
+    private def addCalls(classes: Iterable[Ast]) {
       for {
-        ((fromPackage, toPackage), count) <- calls
-        from <- graph.vertices.has("kind", "package").has("name", fromPackage).toList
-        to <- graph.vertices.has("kind", "package").has("name", toPackage).toList
+        cls <- classes
+        outCls = cls.className
+        (inCls, count) <- cls.calls.groupBy(x => x).mapValues(_.length)
+      } for {
+        inVertex <- classesNamed(inCls)
+        outVertex <- classesNamed(outCls)
       } {
-        val e = graph.addEdge(from.asInstanceOf[Vertex], "calls", to.asInstanceOf[Vertex])
-        e.setProperty("count", count.toString)
+        logger.debug(name(outVertex) + " -calls(" + count + ")-> " + name(inVertex))
+        val edge = graph.addEdge(outVertex, "calls", inVertex)
+        edge.setProperty("count", count)
       }
+    }
+
+    def addRuntimeCalls(runtime: Iterable[(String, String, Int)]) {
+      val calls = runtime.groupBy {case (a, b, _) => (a, b)}.mapValues(s => s.map(_._3).sum)
+      for {
+        ((fromClass, toClass), count) <- calls
+        from <- classesNamed(fromClass)
+        to <- classesNamed(toClass)
+      } {
+        logger.debug(name(from) + " -runtime-calls(" + count + ")-> " + name(to))
+        val e = graph.addEdge(from.asInstanceOf[Vertex], "runtime-calls", to.asInstanceOf[Vertex])
+        e.setProperty("count", count)
+      }
+      liftToPackage("runtime-calls")
     }
 
     /*

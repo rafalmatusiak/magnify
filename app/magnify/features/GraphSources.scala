@@ -66,17 +66,16 @@ private[features] final class GraphSources (parse: Parser, imports: Imports) ext
 
   private object CsvCall extends Regex("""([^;]+);([^;]+);(\d+)""", "from", "to", "count")
 
-  private object PackageFromCall extends Regex("""(.* |^)([^ ]*)\.[^.]+\.[^.(]+\(.*""")
+  private object ClassFromCall extends Regex("""(.* |^)([^ ]*)\.[^.(]+\(.*""")
 
   def addRuntime(name: String, file: File) {
     for (graph <- get(name)) {
       val runtime = for {
         CsvCall(from, to, count) <- Source.fromFile(file).getLines().toSeq
-        PackageFromCall(_, fromPackage) = from
-        PackageFromCall(_, toPackage) = to
-      } yield (fromPackage, toPackage, count.toInt)
-      val calls = runtime.groupBy {case (a, b, _) => (a, b)}.mapValues(s => s.map(_._3).sum)
-      graph.addRuntimeCalls(calls)
+        ClassFromCall(_, fromClass) = from
+        ClassFromCall(_, toClass) = to
+      } yield (fromClass, toClass, count.toInt)
+      graph.addRuntimeCalls(runtime)
     }
   }
 }

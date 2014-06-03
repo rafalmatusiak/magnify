@@ -28,5 +28,6 @@ final class CustomGraphView (graph: Graph) extends GraphView {
     new OrFilterPipe[Edge](
       new LabelFilterPipe("package-imports", Filter.EQUAL),
       new LabelFilterPipe("in-package", Filter.EQUAL),
-      new LabelFilterPipe("calls", Filter.EQUAL))
+      new LabelFilterPipe("package-calls", Filter.EQUAL),
+      new LabelFilterPipe("package-runtime-calls", Filter.EQUAL))
 }

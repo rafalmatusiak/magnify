@@ -110,37 +110,44 @@ $ ->
     defaultStrengths =
       inPackage: 0.5
       packageImports: 0.1
-      calls: 0.01
+      packageCalls: 0.01
+      packageRuntimeCalls: 0.01
     strengths =
       inPackage: defaultStrengths.inPackage
       packageImports: defaultStrengths.packageImports
-      calls: defaultStrengths.calls
+      packageCalls: defaultStrengths.packageCalls
+      packageRuntimeCalls: defaultStrengths.packageRuntimeCalls
     strength = (link) ->
       switch link.kind
         when "package-imports" then strengths.packageImports
         when "in-package" then strengths.inPackage
-        when "calls" then strengths.calls
+        when "package-calls" then strengths.packageCalls
+        when "package-runtime-calls" then strengths.packageRuntimeCalls
 
     defaultLinkColors =
       inPackage: "#cc0000"
       packageImports: "#babdb6"
-      calls: "#fce94f"
+      packageCalls: "#f7ad00"
+      packageRuntimeCalls: "#fce94f"
     linkColors =
       inPackage: "transparent"
       packageImports: "transparent"
-      calls: "transparent"
+      packageCalls: "transparent"
+      packageRuntimeCalls: "transparent"
     linkColor = (link) ->
       switch link.kind
         when "in-package" then linkColors.inPackage
         when "package-imports" then linkColors.packageImports
-        when "calls" then linkColors.calls
+        when "package-calls" then linkColors.packageCalls
+        when "package-runtime-calls" then linkColors.packageRuntimeCalls
 
     linkWidth = (link) ->
       switch link.kind
         when "in-package" then 1.5
         when "package-imports" then 1
         when "imports" then 1
-        when "calls" then Math.min(link.count / 10.0, 5)
+        when "package-calls" then Math.min(link.count / 10.0, 5)
+        when "package-runtime-calls" then Math.min(link.count / 10.0, 5)
 
     force = d3.layout.force()
     .charge(-120)
@@ -194,7 +201,8 @@ $ ->
           force.linkStrength(strength).start()
       check(".check-imports", "packageImports")
       check(".check-contains", "inPackage")
-      check(".check-runtime", "calls")
+      check(".check-calls", "packageCalls")
+      check(".check-runtime-calls", "packageRuntimeCalls")
 
       linkedByIndex = {}
       json.edges.forEach((d) -> linkedByIndex[d.source.index + "," + d.target.index] = 1)
@@ -274,8 +282,12 @@ $ ->
                   contains
                 </label>
                 <label class="checkbox inline">
-                  <input type="checkbox" value="" class="check-runtime"/>
-                  runtime
+                  <input type="checkbox" value="" class="check-calls"/>
+                  calls
+                </label>
+                <label class="checkbox inline">
+                  <input type="checkbox" value="" class="check-runtime-calls"/>
+                  runtime calls
                 </label>
               </div>
             </div>
