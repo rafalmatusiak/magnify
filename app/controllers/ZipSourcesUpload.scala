@@ -1,6 +1,6 @@
 package controllers
 
-import akka.dispatch._
+import scala.concurrent._
 import java.io.File
 import java.lang.String
 import java.util.concurrent.Executors

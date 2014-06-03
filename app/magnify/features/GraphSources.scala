@@ -10,7 +10,6 @@ import magnify.model._
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.io.Source
-import com.avaje.ebean.text.csv.CsvCallback
 import scala.util.matching.Regex
 import magnify.model.Ast
 
