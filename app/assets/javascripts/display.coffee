@@ -10,6 +10,8 @@ $ ->
     strength = (link) ->
       switch link.kind
         when "imports" then 0.01
+        when "package-runtime-calls" then 0.01
+        when "package-calls" then 0.01
         when "package-imports" then 0.03
         when "in-package" then 1.0
 
@@ -18,11 +20,15 @@ $ ->
         when "in-package" then "#cc0000"
         when "imports" then "#d3d7df"
         when "package-imports" then "#babdb6"
+        when "package-calls" then "#f7ad00"
+        when "package-runtime-calls" then "#fce94f"
 
     linkWidth = (link) ->
       switch link.kind
         when "in-package" then 1.5
         when "package-imports" then 1
+        when "package-calls" then Math.min(link.count / 10.0, 5)
+        when "package-runtime-calls" then Math.min(link.count / 10.0, 5)
         when "imports" then 1
 
     force = d3.layout.force()
@@ -345,6 +351,14 @@ $ ->
     clearSvg()
     $(".gauges").remove()
     makeSvg("pkgImports.json")
+    $("[rel='tooltip']").tooltip()
+
+  $(".package-calls-button").on "click", (event) ->
+    $(".nav-graph-detail-level").find("*").removeClass("active")
+    $(".nav-graph-package-calls-tab").addClass("active")
+    clearSvg()
+    $(".gauges").remove()
+    makeSvg("pkgCalls.json")
     $("[rel='tooltip']").tooltip()
 
   makeSvg("packages.json")

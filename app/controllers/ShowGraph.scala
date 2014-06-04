@@ -30,7 +30,7 @@ sealed class ShowGraph (protected override val sources: Sources) extends Control
     }
 
   private def projectNotFound(projectName: String)(implicit request: Request[AnyContent]): Result = {
-    val message = "Project \"%s\" was not found. Why not create new one?" format projectName
+    val message = "Project \"%s\" was not found. Why not create a new one?" format projectName
     Redirect(routes.ZipSourcesUpload.form()).flashing("warning" -> message)
   }
 
@@ -49,6 +49,12 @@ sealed class ShowGraph (protected override val sources: Sources) extends Control
   def showPkgImportsJson(name: String) = Action { implicit request =>
     withGraph(name) { graph =>
       Ok(json(new PackageImportsGraphView(graph)))
+    }
+  }
+
+  def showPkgCallsJson(name: String) = Action { implicit request =>
+    withGraph(name) { graph =>
+      Ok(json(new PackageCallsGraphView(graph)))
     }
   }
 
