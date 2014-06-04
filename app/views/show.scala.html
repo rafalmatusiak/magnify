@@ -3,12 +3,13 @@
 @head = {
   <script src="@routes.Assets.at("javascripts/d3.v2.js")"></script>
   <script src="@routes.Assets.at("javascripts/display.js")"></script>
+  <script type="text/javascript" src='@routes.Router.javascriptRoutes()'></script>
 }
 
 @main(name, head, projectName=name) {
   <ul class="nav nav-tabs nav-graph-detail-level">
     <li class="disabled">
-      <a href="#">@name</a>
+      <a href="#" id="projectName">@name</a>
     </li>
     <li class="active nav-graph-packages-tab">
       <a

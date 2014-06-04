@@ -3,6 +3,7 @@ package magnify.features
 import magnify.model.graph.Graph
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.annotation.tailrec
 import com.tinkerpop.blueprints.{Edge, Vertex, Direction}
 import com.tinkerpop.gremlin.java.GremlinPipeline
 import edu.uci.ics.jung.algorithms.scoring.PageRank
@@ -40,8 +41,9 @@ object SoftwareGraph {
     }
 
     private def calculateTransitiveClosure() {
-      liftToPackage("imports")
-      liftToPackage("calls")
+      updatePackageImports()
+      updatePackageCalls()
+      updatePackageRuntimeCalls()
     }
 
     private def calculateMetrics() {
@@ -138,6 +140,18 @@ object SoftwareGraph {
         val e = graph.addEdge(from.asInstanceOf[Vertex], "runtime-calls", to.asInstanceOf[Vertex])
         e.setProperty("count", count)
       }
+      updateCalculated()
+    }
+
+    private def updatePackageImports() {
+      liftToPackage("imports")
+    }
+
+    private def updatePackageCalls() {
+      liftToPackage("calls")
+    }
+
+    private def updatePackageRuntimeCalls() {
       liftToPackage("runtime-calls")
     }
 
@@ -172,6 +186,8 @@ object SoftwareGraph {
         .toList
 
       val liftedRelation = "package-" + relation
+
+      graph.removeEdges(liftedRelation)
 
       val edgesByRelatedPackages =
         (for {
@@ -225,6 +241,132 @@ object SoftwareGraph {
           .toList.toSeq.asInstanceOf[mutable.Seq[Int]]
         val avg = elems.sum.toDouble / elems.size.toDouble
         pkg.setProperty("metric--lines-of-code", avg)
+      }
+    }
+
+    def packageCallCount(): Int = {
+      val calls = new LabelFilterPipe("package-calls", Filter.EQUAL)
+      graph.edges.add(calls).toList.map(e => {
+        if (e.getVertex(Direction.OUT) != e.getVertex(Direction.IN))
+          e.getProperty("count").asInstanceOf[Int]
+        else
+          0
+      }).sum
+    }
+
+    def optimizeBySwappingClassesBetweenPackages(iterations: Int, tolerance: Int) {
+      @tailrec
+      def randomFind[A](xs: List[A], p: (A) ⇒ Boolean): Option[A] =
+        if (xs.isEmpty)
+          None
+        else
+          xs.splitAt(scala.util.Random.nextInt(xs.length)) match {
+            case (pre, e :: post)  => if (p(e)) Some(e) else randomFind(pre ::: post, p)
+            case _ => None
+          }
+
+      def canSwapPackages(call :Edge): Boolean = {
+        val c1 = call.getVertex(Direction.OUT)
+        val c2 = call.getVertex(Direction.IN)
+
+        val c1Pkg = new GremlinPipeline()
+          .start(c1)
+          .out("in-package")
+          .toList
+
+        val c2Pkg = new GremlinPipeline()
+          .start(c2)
+          .out("in-package")
+          .toList
+
+        if (c1Pkg.intersect(c2Pkg).nonEmpty)
+          false
+        else {
+          val c1CallsPkg = new GremlinPipeline()
+            .start(c1)
+            .both("calls")
+            .hasNot("name", name(c1))
+            .hasNot("name", name(c2))
+            .out("in-package")
+            .toList
+          val c2CallsPkg = new GremlinPipeline()
+            .start(c2)
+            .both("calls")
+            .hasNot("name", name(c1))
+            .hasNot("name", name(c2))
+            .out("in-package")
+            .toList
+
+          val c1CallsC1Pkg = c1CallsPkg.count(c1Pkg.contains(_))
+          val c1CallsC2Pkg = c1CallsPkg.count(c2Pkg.contains(_))
+          val c2CallsC1Pkg = c2CallsPkg.count(c1Pkg.contains(_))
+          val c2CallsC2Pkg = c2CallsPkg.count(c2Pkg.contains(_))
+
+          c1CallsC1Pkg - c1CallsC2Pkg + c2CallsC2Pkg - c2CallsC1Pkg < tolerance
+        }
+      }
+
+      @tailrec
+      def optimizeBySwappingClassesBetweenPackages(i: Int, calls: List[Edge]) {
+        if (i >= iterations)
+          return
+        else
+          randomFind(calls, canSwapPackages) match {
+            case Some(call) if i < iterations =>
+              val c1 = call.getVertex(Direction.OUT)
+              val c2 = call.getVertex(Direction.IN)
+              swapPackages(c1, c2)
+              optimizeBySwappingClassesBetweenPackages(i + 1, calls diff List(call))
+            case _ =>
+          }
+      }
+
+      val calls = graph.edges
+        .add(new LabelFilterPipe("calls", Filter.EQUAL))
+        .toList.toList
+
+      logger.debug("iterations=" + iterations + " tolerance=" + tolerance)
+
+      optimizeBySwappingClassesBetweenPackages(0, calls)
+      updateCalculated()
+    }
+
+    def moveClassesRandomly() {
+      val classes = graph.vertices
+        .has("kind", "class")
+        .asInstanceOf[GremlinPipeline[Vertex, Vertex]]
+        .toList
+      val packages = graph.vertices
+        .has("kind", "package")
+        .asInstanceOf[GremlinPipeline[Vertex, Vertex]]
+        .toList
+      for (cls <- classes) {
+        moveToPackage(cls, packages(scala.util.Random.nextInt(packages.length)))
+      }
+      updateCalculated()
+    }
+
+    private def moveToPackage(v: Vertex, pkg: Vertex) {
+      logger.debug("move: "+ name(v) + " to package " + name(pkg))
+      graph.removeEdges(Seq(v), Direction.OUT,"in-package")
+      graph.addEdge(v, "in-package", pkg)
+    }
+
+    private def swapPackages(v1: Vertex, v2: Vertex) {
+      for {
+        pkg2 <- new GremlinPipeline()
+          .start(v2)
+          .out("in-package")
+          .asInstanceOf[GremlinPipeline[Vertex, Vertex]]
+          .toList
+        pkg1 <- new GremlinPipeline()
+          .start(v1)
+          .out("in-package")
+          .asInstanceOf[GremlinPipeline[Vertex, Vertex]]
+          .toList
+      } {
+        moveToPackage(v1, pkg2)
+        moveToPackage(v2, pkg1)
       }
     }
 

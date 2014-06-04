@@ -205,6 +205,7 @@ $ ->
             strengths[attr] = 0
           link.style("stroke", linkColor)
           force.linkStrength(strength).start()
+        $(selector).triggerHandler("click")
       check(".check-imports", "packageImports")
       check(".check-contains", "inPackage")
       check(".check-calls", "packageCalls")
@@ -232,6 +233,7 @@ $ ->
         else
           color = (d) -> badness(d["metric--lines-of-code"])
         node.style("fill", color).call(force.drag)
+      $("""input[name="node-color"]""").triggerHandler("click")
 
       $("""input[name="node-size"]""").on "click", ->
         $this = $(this)
@@ -240,6 +242,7 @@ $ ->
         else
           size = (d) -> 3 + Math.max(3, 100.0 * d["page-rank"])
         node.attr("r", size).call(force.drag)
+      $("""input[name="node-size"]""").triggerHandler("click")
 
       node
       .append("title")
@@ -334,7 +337,52 @@ $ ->
           </form>
         </a>
       </li>
+      <li class="active gauges">
+        <a href="javascript:;">
+          <label class="control-label pagination-centered"><strong>Optimize</strong></label>
+          <form class="form">
+            <div class="control-group">
+              <label class="control-label" for="iterations">Iterations</label>
+              <div class="controls">
+                <input class="span6" type="text" id="iterations" name="iterations" placeholder="100">
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="tolerance">Tolerance</label>
+              <div class="controls">
+                <input class="span6" type="text" id="tolerance" name="tolerance" placeholder="5">
+              </div>
+            </div>
+            <div class="control-group">
+              <div class="controls">
+                <span class="btn btn-default optimize-button">Go!</span>
+              </div>
+            </div>
+          </form>
+          <label class="optimization-status" />
+        </a>
+      </li>
       """)
+    $("#iterations").val($("#iterations").attr("placeholder"))
+    $("#tolerance").val($("#tolerance").attr("placeholder"))
+    $(".optimize-button").on "click", ->
+      jsRoutes.controllers.OptimizeGraph.optimize($("#projectName").text(), $("#iterations").val(), $("#tolerance").val()).ajax({
+        success: (data) ->
+          $(".optimization-status").removeClass("text-*")
+          $(".optimization-status").addClass("text-success")
+          $(".optimization-status").text("")
+          clearSvg()
+          customSvg("custom.json")
+        error: (data) ->
+          $(".optimization-status").removeClass("text-*")
+          $(".optimization-status").addClass("text-error")
+          $(".optimization-status").text("Optimization failed!")
+          clearSvg()
+          customSvg("custom.json")
+      })
+      $(".optimization-status").removeClass("text-*")
+      $(".optimization-status").addClass("text-warning")
+      $(".optimization-status").text("Optimizing...")
     customSvg("custom.json")
 
   $(".packages-button").on "click", (event) ->
