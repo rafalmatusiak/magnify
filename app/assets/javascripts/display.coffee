@@ -10,6 +10,8 @@ $ ->
     strength = (link) ->
       switch link.kind
         when "imports" then 0.01
+        when "runtime-calls" then 0.01
+        when "calls" then 0.01
         when "package-runtime-calls" then 0.01
         when "package-calls" then 0.01
         when "package-imports" then 0.03
@@ -22,6 +24,8 @@ $ ->
         when "package-imports" then "#babdb6"
         when "package-calls" then "#f7ad00"
         when "package-runtime-calls" then "#fce94f"
+        when "calls" then "#f7ad00"
+        when "runtime-calls" then "#fce94f"
 
     linkWidth = (link) ->
       switch link.kind
@@ -29,6 +33,8 @@ $ ->
         when "package-imports" then 1
         when "package-calls" then Math.min(link.count / 10.0, 5)
         when "package-runtime-calls" then Math.min(link.count / 10.0, 5)
+        when "calls" then Math.min(link.count / 10.0, 5)
+        when "runtime-calls" then Math.min(link.count / 10.0, 5)
         when "imports" then 1
 
     force = d3.layout.force()
@@ -431,6 +437,13 @@ $ ->
     $(".nav-graph-package-calls-tab").addClass("active")
     $(".gauges").remove()
     checkOptimized("pkgCalls.json", false)
+    $("[rel='tooltip']").tooltip()
+
+  $(".class-calls-button").on "click", (event) ->
+    $(".nav-graph-detail-level").find("*").removeClass("active")
+    $(".nav-graph-class-calls-tab").addClass("active")
+    $(".gauges").remove()
+    checkOptimized("classCalls.json", false)
     $("[rel='tooltip']").tooltip()
 
   jsRoutes.controllers.ShowGraph.versionsJson($("#projectName").text()).ajax({

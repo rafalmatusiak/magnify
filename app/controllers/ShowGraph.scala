@@ -68,6 +68,12 @@ sealed class ShowGraph (protected override val sources: Sources) extends Control
     }
   }
 
+  def showClassCallsJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
+      Ok(json(new ClassCallsGraphView(graph)))
+    }
+  }
+
   private def withGraph(name: String, version: Int = -1)(action: Graph => Result)(implicit request: Request[AnyContent]): Result =
     sources.get(name, version) match {
       case Some(graph) => action(graph)

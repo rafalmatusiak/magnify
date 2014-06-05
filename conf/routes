@@ -13,6 +13,8 @@ GET     /project/:name/pkgImports.json                  controllers.ShowGraph.sh
 GET     /project/:name/:version/pkgImports.json         controllers.ShowGraph.showPkgImportsJson(name: String, version: Int)
 GET     /project/:name/pkgCalls.json                    controllers.ShowGraph.showPkgCallsJson(name: String, version: Int = -1)
 GET     /project/:name/:version/pkgCalls.json           controllers.ShowGraph.showPkgCallsJson(name: String, version: Int)
+GET     /project/:name/classCalls.json                  controllers.ShowGraph.showClassCallsJson(name: String, version: Int = -1)
+GET     /project/:name/:version/classCalls.json         controllers.ShowGraph.showClassCallsJson(name: String, version: Int)
 GET     /project/:name/upload-call-count.html           controllers.UploadCallCount.form(name: String)
 POST    /project/:name/upload-call-count.html           controllers.UploadCallCount.upload(name: String)
 PUT     /project/:name/optimize/:iterations/:tolerance/:incremental  controllers.OptimizeGraph.optimize(name: String, iterations: Int, tolerance: Int, incremental: Boolean)
