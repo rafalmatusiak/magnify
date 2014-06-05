@@ -50,6 +50,18 @@ sealed class ShowGraph (protected override val sources: Sources) extends Control
     }
   }
 
+  def showCustomPackagesJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
+      Ok(json(new CustomPackagesGraphView(graph)))
+    }
+  }
+
+  def showCustomClassesJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
+      Ok(json(new CustomClassesGraphView(graph)))
+    }
+  }
+
   def showPackagesJson(name: String, version: Int = -1) = Action { implicit request =>
     withGraph(name, version) { graph =>
       Ok(json(new PackagesGraphView(graph)))

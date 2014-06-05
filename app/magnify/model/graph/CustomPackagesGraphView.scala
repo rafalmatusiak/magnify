@@ -7,32 +7,27 @@ import com.tinkerpop.pipes.filter.FilterPipe.Filter
 import com.tinkerpop.pipes.filter.OrFilterPipe
 
 /**
- * @author Cezary Bartoszuk (cezary@codilime.com)
  * @author Rafal Matusiak (rafal.matusiak@gmail.com)
  */
-final class CustomGraphView(graph: Graph) extends GraphView {
+final class CustomPackagesGraphView(graph: Graph) extends GraphView {
 
   override def vertices: Iterable[Vertex] =
       graph.vertices
-        .add(classesAndPackages)
+        .add(packages)
         .toList
 
-  private val classesAndPackages = new OrFilterPipe[Vertex](
-      new PropertyFilterPipe[Vertex, String]("kind", "package", Filter.EQUAL),
-      new PropertyFilterPipe[Vertex, String]("kind", "class", Filter.EQUAL))
+  private val packages =
+    new PropertyFilterPipe[Vertex, String]("kind", "package", Filter.EQUAL)
 
   override def edges: Iterable[Edge] =
       graph.edges
-        .add(callsAndImports)
+        .add(packageCallsAndImports)
         .toList
 
-  private val callsAndImports =
+  private val packageCallsAndImports =
     new OrFilterPipe[Edge](
       new LabelFilterPipe("in-package", Filter.EQUAL),
       new LabelFilterPipe("package-imports", Filter.EQUAL),
       new LabelFilterPipe("package-calls", Filter.EQUAL),
-      new LabelFilterPipe("package-runtime-calls", Filter.EQUAL),
-      new LabelFilterPipe("imports", Filter.EQUAL),
-      new LabelFilterPipe("calls", Filter.EQUAL),
-      new LabelFilterPipe("runtime-calls", Filter.EQUAL))
+      new LabelFilterPipe("package-runtime-calls", Filter.EQUAL))
 }
