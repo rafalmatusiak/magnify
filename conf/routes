@@ -4,13 +4,18 @@
 
 # Home page
 GET     /project/:name/graph.html                       controllers.ShowGraph.show(name: String)
-GET     /project/:name/custom.json                      controllers.ShowGraph.showCustomJson(name: String)
-GET     /project/:name/packages.json                    controllers.ShowGraph.showPackagesJson(name: String)
-GET     /project/:name/pkgImports.json                  controllers.ShowGraph.showPkgImportsJson(name: String)
-GET     /project/:name/pkgCalls.json                    controllers.ShowGraph.showPkgCallsJson(name: String)
+GET     /project/:name/versions.json             controllers.ShowGraph.versionsJson(name: String)
+GET     /project/:name/custom.json                      controllers.ShowGraph.showCustomJson(name: String, version: Int = -1)
+GET     /project/:name/:version/custom.json             controllers.ShowGraph.showCustomJson(name: String, version: Int)
+GET     /project/:name/packages.json                    controllers.ShowGraph.showPackagesJson(name: String, version: Int = -1)
+GET     /project/:name/:version/packages.json           controllers.ShowGraph.showPackagesJson(name: String, version: Int)
+GET     /project/:name/pkgImports.json                  controllers.ShowGraph.showPkgImportsJson(name: String, version: Int = -1)
+GET     /project/:name/:version/pkgImports.json         controllers.ShowGraph.showPkgImportsJson(name: String, version: Int)
+GET     /project/:name/pkgCalls.json                    controllers.ShowGraph.showPkgCallsJson(name: String, version: Int = -1)
+GET     /project/:name/:version/pkgCalls.json           controllers.ShowGraph.showPkgCallsJson(name: String, version: Int)
 GET     /project/:name/upload-call-count.html           controllers.UploadCallCount.form(name: String)
 POST    /project/:name/upload-call-count.html           controllers.UploadCallCount.upload(name: String)
-PUT     /project/:name/optimize/:iterations/:tolerance  controllers.OptimizeGraph.optimize(name: String, iterations: Int, tolerance: Int)
+PUT     /project/:name/optimize/:iterations/:tolerance/:incremental  controllers.OptimizeGraph.optimize(name: String, iterations: Int, tolerance: Int, incremental: Boolean)
 GET     /project/upload.html                            controllers.ZipSourcesUpload.form
 POST    /project/upload.zip                             controllers.ZipSourcesUpload.upload
 POST    /project/upload.json                            controllers.ZipSourcesUpload.uploadJson

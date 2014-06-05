@@ -2,6 +2,7 @@ package magnify.model.graph
 
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph
 import com.tinkerpop.blueprints.{Graph => BlueprintsGraph, _}
+import com.tinkerpop.blueprints.util.ElementHelper
 import com.tinkerpop.gremlin.java.GremlinPipeline
 import com.tinkerpop.gremlin.pipes.filter.LabelFilterPipe
 import com.tinkerpop.pipes.filter.FilterPipe.Filter
@@ -72,6 +73,25 @@ final class Graph (val blueprintsGraph: BlueprintsGraph) {
       edge <- edges(v)
     } {
       removeEdge(edge)
+    }
+  }
+
+  def copy(toGraph: Graph) {
+    import scala.collection.mutable
+    val ids = mutable.Map[Object, Object]()
+    for (vertex <- blueprintsGraph.getVertices) {
+      val toVertex = toGraph.blueprintsGraph.addVertex(vertex.getId)
+      ids += vertex.getId -> toVertex.getId
+      ElementHelper.copyProperties(vertex, toVertex)
+    }
+    for (edge <- blueprintsGraph.getEdges) {
+      val toEdge = toGraph.blueprintsGraph.addEdge(
+        edge.getId,
+        toGraph.blueprintsGraph.getVertex(ids(edge.getVertex(Direction.OUT).getId)),
+        toGraph.blueprintsGraph.getVertex(ids(edge.getVertex(Direction.IN).getId)),
+        edge.getLabel
+      )
+      ElementHelper.copyProperties(edge, toEdge)
     }
   }
 }

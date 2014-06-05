@@ -10,7 +10,10 @@ import play.api.libs.json.Writes._
 import play.api.libs.json._
 import play.api.mvc._
 
-
+/**
+ * @author Cezary Bartoszuk (cezarybartoszuk@gmail.com)
+ * @author Rafal Matusiak (rafal.matusiak@gmail.com)
+ */
 object ShowGraph extends ShowGraph(inject[Sources])
 
 sealed class ShowGraph (protected override val sources: Sources) extends Controller with ProjectList {
@@ -34,37 +37,48 @@ sealed class ShowGraph (protected override val sources: Sources) extends Control
     Redirect(routes.ZipSourcesUpload.form()).flashing("warning" -> message)
   }
 
-  def showCustomJson(name: String) = Action { implicit request =>
-    withGraph(name) { graph =>
+  def versionsJson(name: String) = Action { implicit request =>
+    sources.versions(name) match {
+      case Some(versions) => Ok(JsObject(Seq("versions" -> toJson(versions))))
+      case None => projectNotFound
+    }
+  }
+
+  def showCustomJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
       Ok(json(new CustomGraphView(graph)))
     }
   }
 
-  def showPackagesJson(name: String) = Action { implicit request =>
-    withGraph(name) { graph =>
+  def showPackagesJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
       Ok(json(new PackagesGraphView(graph)))
     }
   }
 
-  def showPkgImportsJson(name: String) = Action { implicit request =>
-    withGraph(name) { graph =>
+  def showPkgImportsJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
       Ok(json(new PackageImportsGraphView(graph)))
     }
   }
 
-  def showPkgCallsJson(name: String) = Action { implicit request =>
-    withGraph(name) { graph =>
+  def showPkgCallsJson(name: String, version: Int = -1) = Action { implicit request =>
+    withGraph(name, version) { graph =>
       Ok(json(new PackageCallsGraphView(graph)))
     }
   }
 
-  private def withGraph(name: String)(action: Graph => Result)(implicit request: Request[AnyContent]): Result =
-    sources.get(name) match {
+  private def withGraph(name: String, version: Int = -1)(action: Graph => Result)(implicit request: Request[AnyContent]): Result =
+    sources.get(name, version) match {
       case Some(graph) => action(graph)
       case None =>
-        sources.getJson(name) match {
-          case Some(json) => Ok(json.getContents)
-          case None => projectNotFound
+        sources.get(name) match {
+          case Some(_) => projectNotFound // found another version
+          case None =>
+            sources.getJson(name) match {
+              case Some(json) => Ok(json.getContents)
+              case None => projectNotFound
+            }
         }
     }
 

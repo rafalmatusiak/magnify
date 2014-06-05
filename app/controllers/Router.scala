@@ -13,6 +13,7 @@ object Router extends Controller {
     import routes.javascript._
     Ok(
       Routes.javascriptRouter("jsRoutes")(
+        ShowGraph.versionsJson,
         ShowGraph.showCustomJson,
         OptimizeGraph.optimize
       )

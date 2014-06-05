@@ -267,12 +267,23 @@ $ ->
   clearSvg = ->
     $("#chart").empty()
 
-
+  checkOptimized = (jsonAddress, custom) ->
+    $(".check-optimized").unbind("click.svg")
+    $(".check-optimized").on "click.svg", ->
+      clearSvg()
+      if ($(".check-optimized").is(":checked"))
+        versionJsonAddress = jsonAddress
+      else
+        versionJsonAddress = "0/" + jsonAddress
+      if (custom)
+        customSvg(versionJsonAddress)
+      else
+        makeSvg(versionJsonAddress)
+    $(".check-optimized").triggerHandler("click")
 
   $(".custom-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-custom-tab").addClass("active")
-    clearSvg()
     $(".gauges").remove()
     $(".mag-sidenav .active").after(
       """
@@ -344,13 +355,21 @@ $ ->
             <div class="control-group">
               <label class="control-label" for="iterations">Iterations</label>
               <div class="controls">
-                <input class="span6" type="text" id="iterations" name="iterations" placeholder="100">
+                <input class="span6 iterations" type="text" name="iterations" placeholder="100">
               </div>
             </div>
             <div class="control-group">
               <label class="control-label" for="tolerance">Tolerance</label>
               <div class="controls">
-                <input class="span6" type="text" id="tolerance" name="tolerance" placeholder="5">
+                <input class="span6 tolerance" type="text" name="tolerance" placeholder="5">
+              </div>
+            </div>
+            <div class="control-group">
+              <div class="controls">
+                <label class="checkbox inline">
+                  <input type="checkbox" value="" class="check-incremental"/>
+                  incremental
+                </label>
               </div>
             </div>
             <div class="control-group">
@@ -363,52 +382,64 @@ $ ->
         </a>
       </li>
       """)
-    $("#iterations").val($("#iterations").attr("placeholder"))
-    $("#tolerance").val($("#tolerance").attr("placeholder"))
+    $(".iterations").val($(".iterations").attr("placeholder"))
+    $(".tolerance").val($(".tolerance").attr("placeholder"))
     $(".optimize-button").on "click", ->
-      jsRoutes.controllers.OptimizeGraph.optimize($("#projectName").text(), $("#iterations").val(), $("#tolerance").val()).ajax({
+      jsRoutes.controllers.OptimizeGraph.optimize($("#projectName").text(), $(".iterations").val(), $(".tolerance").val(), $(".incremental").is(":checked")).ajax({
         success: (data) ->
-          $(".optimization-status").removeClass("text-*")
+          $(".optimization-status").removeClass((index, css) ->
+            (css.match(/\btext-\S+/g) || []).join(' ')
+          )
           $(".optimization-status").addClass("text-success")
           $(".optimization-status").text("")
-          clearSvg()
-          customSvg("custom.json")
+          $(".check-optimized").prop("disabled", false)
+          $(".check-optimized").prop("checked", true)
+          $(".check-optimized").triggerHandler("click")
         error: (data) ->
-          $(".optimization-status").removeClass("text-*")
+          $(".optimization-status").removeClass((index, css) ->
+            (css.match(/\btext-\S+/g) || []).join(' ')
+          )
           $(".optimization-status").addClass("text-error")
           $(".optimization-status").text("Optimization failed!")
-          clearSvg()
-          customSvg("custom.json")
+          $(".check-optimized").prop("checked", false)
+          $(".check-optimized").prop("disabled", true)
+          $(".check-optimized").triggerHandler("click")
       })
-      $(".optimization-status").removeClass("text-*")
+      $(".optimization-status").removeClass((index, css) ->
+        (css.match(/\btext-\S+/g) || []).join(' ')
+      )
       $(".optimization-status").addClass("text-warning")
       $(".optimization-status").text("Optimizing...")
-    customSvg("custom.json")
+    checkOptimized("custom.json", true)
 
   $(".packages-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-packages-tab").addClass("active")
-    clearSvg()
     $(".gauges").remove()
-    makeSvg("packages.json")
+    checkOptimized("packages.json", false)
     $("[rel='tooltip']").tooltip()
 
   $(".package-imports-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-imports-tab").addClass("active")
-    clearSvg()
     $(".gauges").remove()
-    makeSvg("pkgImports.json")
+    checkOptimized("pkgImports.json", false)
     $("[rel='tooltip']").tooltip()
 
   $(".package-calls-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-calls-tab").addClass("active")
-    clearSvg()
     $(".gauges").remove()
-    makeSvg("pkgCalls.json")
+    checkOptimized("pkgCalls.json", false)
     $("[rel='tooltip']").tooltip()
 
-  makeSvg("packages.json")
-  $("[rel='tooltip']").tooltip()
+  jsRoutes.controllers.ShowGraph.versionsJson($("#projectName").text()).ajax({
+    success: (data) ->
+      $(".check-optimized").prop("disabled", data.versions.length <= 1)
+    error: (data) ->
+      $(".check-optimized").prop("checked", false)
+      $(".check-optimized").prop("disabled", true)
+  })
 
+  $(".packages-button").triggerHandler("click")
+  $("[rel='tooltip']").tooltip()

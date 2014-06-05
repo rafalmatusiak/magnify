@@ -14,17 +14,38 @@ import magnify.features.SoftwareGraph._
  * @author Rafal Matusiak (rafal.matusiak@gmail.com)
  */
 private[features] final class GraphSources (parse: Parser, imports: Imports) extends Sources {
-  private val graphs = mutable.Map[String, Graph]()
+  private val graphs = mutable.Map[String, mutable.Map[Int, Graph]]()
   private val importedGraphs = mutable.Map[String, Json]()
 
-  override def add(name: String, file: Archive) {
+  override def add(name: String, file: Archive): Graph = {
     val graph = Graph.tinker
     graph.process(classesFrom(file), imports)
-    graphs += name -> graph
+    graphs += name -> (mutable.Map[Int, Graph]() += 0 -> graph)
+    graph
   }
 
-  override def add(name: String, graph: Json) {
+  override def add(name: String, version: Int = -1): Graph = {
+    val graph = Graph.tinker
+    graphs.get(name) match {
+      case Some(v) => v += (if (version >= 0) version else v.keys.max + 1) -> graph
+      case None => graphs += name -> (mutable.Map[Int, Graph]() += (if (version >= 0) version else 0) -> graph)
+    }
+    graph
+  }
+
+  override def add(name: String, graph: Json): Json = {
     importedGraphs += name -> graph
+    graph
+  }
+
+  override def remove(name: String, version: Int = -1) = {
+    if (version >= 0)
+      graphs.get(name) match {
+        case Some(v) => v.remove(version)
+        case None =>
+      }
+    else
+      graphs.remove(name)
   }
 
   private def classesFrom(file: Archive): Seq[(Ast, String)] = parse(file.extract {
@@ -58,8 +79,17 @@ private[features] final class GraphSources (parse: Parser, imports: Imports) ext
   override def list: Seq[String] =
     graphs.keys.toSeq ++ importedGraphs.keys.toSeq
 
-  override def get(name: String): Option[Graph] =
-    graphs.get(name)
+  override def versions(name: String): Option[Iterable[Int]] =
+    graphs.get(name) match {
+      case Some(m) => Some(m.keys)
+      case None => None
+    }
+
+  override def get(name: String, version: Int = -1): Option[Graph] =
+    graphs.get(name) match {
+      case Some(m) => if (version >= 0) m.get(version) else m.get(m.keys.max)
+      case None => None
+    }
 
   override def getJson(name: String) =
     importedGraphs.get(name)

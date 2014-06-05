@@ -15,10 +15,14 @@ object OptimizeGraph extends OptimizeGraph(inject[Sources])
 sealed class OptimizeGraph (override protected val sources: Sources)
   extends Controller with ProjectList {
 
-  def optimize(name: String, iterations: Int, tolerance: Int) = Action { implicit request =>
-    sources.get(name) match {
+  def optimize(name: String, iterations: Int, tolerance: Int, incremental: Boolean = false) = Action { implicit request =>
+    sources.get(name, if (incremental) -1 else 0) match {
       case Some(graph) =>
-        graph.optimizeBySwappingClassesBetweenPackages(iterations, tolerance)
+        if (!incremental)
+          sources.versions(name).getOrElse(Seq()).filter(_ != 0).foreach(sources.remove(name, _))
+        val optimizedGraph = sources.add(name, if (incremental) -1 else 1)
+        graph.copy(optimizedGraph)
+        optimizedGraph.optimizeBySwappingClassesBetweenPackages(iterations, tolerance)
         Ok
       case None =>
         NotFound

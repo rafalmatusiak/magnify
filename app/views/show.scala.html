@@ -11,6 +11,22 @@
     <li class="disabled">
       <a href="#" id="projectName">@name</a>
     </li>
+    <li class="disabled">
+      <a href="#">
+        <label class="checkbox">
+          <input type="checkbox" value="" class="check-optimized" disabled="disabled"/>
+          optimized
+        </label>
+        <script type="text/javascript">
+          $('.check-optimized').click(function() {
+            if ($('.check-optimized').is(':checked'))
+              $('.json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = -1)')
+            else
+              $('.json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = 0)')
+          });
+        </script>
+      </a>
+    </li>
     <li class="active nav-graph-packages-tab">
       <a
           href="#"
@@ -51,7 +67,7 @@
       <a href="@routes.UploadCallCount.form(name)">Upload runtime data <i class="icon-plane"></i></a>
     </li>
     <li class="disabled">
-      <a href="@routes.ShowGraph.showCustomJson(name)">Download graph JSON <i class="icon-file"></i></a>
+      <a href="@routes.ShowGraph.showCustomJson(name, version = -1)" class="json-button">Download graph JSON <i class="icon-file"></i></a>
     </li>
   </ul>
   <div id="chart">
