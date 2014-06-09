@@ -20,9 +20,9 @@
         <script type="text/javascript">
           $('.check-optimized').click(function() {
             if ($('.check-optimized').is(':checked'))
-              $('.json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = -1)')
+              $('.graph-json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = -1)')
             else
-              $('.json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = 0)')
+              $('.graph-json-button').attr('href', '@routes.ShowGraph.showCustomJson(name, version = 0)')
           });
         </script>
       </a>
@@ -78,7 +78,10 @@
       <a href="@routes.UploadCallCount.form(name)">Upload runtime data <i class="icon-plane"></i></a>
     </li>
     <li class="disabled">
-      <a href="@routes.ShowGraph.showCustomJson(name, version = -1)" class="json-button">Download graph JSON <i class="icon-file"></i></a>
+      <a href="@routes.ShowGraph.showCustomJson(name, version = -1)" class="graph-json-button">Download graph JSON <i class="icon-file"></i></a>
+    </li>
+    <li class="disabled">
+      <a href="@routes.DownloadRefactorings.download(name, version = -1)" class="refactorings-json-button">Download refactorings JSON <i class="icon-file"></i></a>
     </li>
   </ul>
   <div id="chart">

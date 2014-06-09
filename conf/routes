@@ -4,7 +4,7 @@
 
 # Home page
 GET     /project/:name/graph.html                       controllers.ShowGraph.show(name: String)
-GET     /project/:name/versions.json             controllers.ShowGraph.versionsJson(name: String)
+GET     /project/:name/versions.json                    controllers.ShowGraph.versionsJson(name: String)
 GET     /project/:name/custom.json                      controllers.ShowGraph.showCustomJson(name: String, version: Int = -1)
 GET     /project/:name/:version/custom.json             controllers.ShowGraph.showCustomJson(name: String, version: Int)
 GET     /project/:name/customPackages.json              controllers.ShowGraph.showCustomPackagesJson(name: String, version: Int = -1)
@@ -19,6 +19,8 @@ GET     /project/:name/pkgCalls.json                    controllers.ShowGraph.sh
 GET     /project/:name/:version/pkgCalls.json           controllers.ShowGraph.showPkgCallsJson(name: String, version: Int)
 GET     /project/:name/classCalls.json                  controllers.ShowGraph.showClassCallsJson(name: String, version: Int = -1)
 GET     /project/:name/:version/classCalls.json         controllers.ShowGraph.showClassCallsJson(name: String, version: Int)
+GET     /project/:name/refactorings.json                controllers.DownloadRefactorings.download(name: String, version: Int = -1)
+GET     /project/:name/:version/refactorings.json       controllers.DownloadRefactorings.download(name: String, version: Int)
 GET     /project/:name/upload-call-count.html           controllers.UploadCallCount.form(name: String)
 POST    /project/:name/upload-call-count.html           controllers.UploadCallCount.upload(name: String)
 PUT     /project/:name/optimize/:iterations/:tolerance/:incremental  controllers.OptimizeGraph.optimize(name: String, iterations: Int, tolerance: Int, incremental: Boolean)

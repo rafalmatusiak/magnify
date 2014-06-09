@@ -180,11 +180,6 @@ object SoftwareGraph {
     */
 
     private def liftToPackage(relation: String) {
-      def inPackage(v: Vertex) = new GremlinPipeline()
-        .start(v)
-        .out("in-package")
-        .toList
-
       val liftedRelation = "package-" + relation
 
       graph.removeEdges(liftedRelation)
@@ -194,7 +189,7 @@ object SoftwareGraph {
           edge <- graph.edges
             .add(new LabelFilterPipe(relation, Filter.EQUAL))
             .toList
-        } yield (inPackage(edge.getVertex(Direction.OUT)), inPackage(edge.getVertex(Direction.IN)), edge))
+        } yield (containingPackage(edge.getVertex(Direction.OUT)), containingPackage(edge.getVertex(Direction.IN)), edge))
         .groupBy {case (a, b, _) => (a, b)}.mapValues(s => s.map(_._3))
 
       for {
@@ -346,6 +341,23 @@ object SoftwareGraph {
       updateCalculated()
     }
 
+    def movedClasses(): Iterable[(String, String, String)] = {
+      // the class name is not changed on moving to another package
+      // so a class was moved if its name does not equal
+      // to N.x where
+      // N - the name of the containing package
+      // x - the simple name of the class
+      for {
+        cls <- graph.vertices
+          .has("kind", "class")
+          .asInstanceOf[GremlinPipeline[Vertex, Vertex]]
+          .toList
+        clsName = name(cls)
+        inPkg <- containingPackage(cls)
+        if pkgName(clsName) != name(inPkg)
+      } yield (simpleName(clsName), pkgName(clsName), name(inPkg))
+    }
+
     private def moveToPackage(v: Vertex, pkg: Vertex) {
       logger.debug("move: "+ name(v) + " to package " + name(pkg))
       graph.removeEdges(Seq(v), Direction.OUT,"in-package")
@@ -369,6 +381,18 @@ object SoftwareGraph {
         moveToPackage(v2, pkg1)
       }
     }
+
+    private def containingPackage(v: Vertex) = new GremlinPipeline()
+      .start(v)
+      .out("in-package")
+      .toList
+
+    private def simpleName(name: String): String =
+      if (name.contains('.')) {
+        name.substring(name.lastIndexOf('.')+1, name.length)
+      } else {
+        name
+      }
 
     private def pkgName(name: String): String =
       if (name.contains('.')) {
