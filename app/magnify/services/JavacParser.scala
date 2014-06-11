@@ -1,11 +1,11 @@
 package magnify.services
 
 import javax.lang.model.element._
-import javax.lang.model.`type`.{ExecutableType, TypeMirror}
+import javax.lang.model.`type`.TypeMirror
 import javax.lang.model.util.Types
 import javax.tools._
 
-import com.sun.source.tree.{ClassTree, CompilationUnitTree, ExpressionTree, MemberSelectTree, MethodInvocationTree}
+import com.sun.source.tree._
 import com.sun.source.util.TreePath
 import com.sun.source.util.TreePathScanner
 import com.sun.source.util.Trees
@@ -27,70 +27,34 @@ private[services] final class JavacParser extends Parser {
 
   val logger = Logger(classOf[JavacParser].getSimpleName)
 
-  //TODO: add other dependencies: field access, new / constructor call, interfaces ?
+  //TODO: add other dependencies: field access, inheritance, via interfaces ?
   class AstTransformer(trees: Trees, types: Types) extends TreePathScanner[Seq[(Ast, String)], Void]  {
     var currentAst: Option[Ast] = None
 
-    private def typeOf(node: ExpressionTree): TypeMirror =
-      trees.getTypeMirror(TreePath.getPath(getCurrentPath, node))
+    private def typeOf(node: ExpressionTree): Option[TypeMirror] =
+      Option(trees.getTypeMirror(TreePath.getPath(getCurrentPath.getCompilationUnit, node)))
 
-    private def asElement(t: TypeMirror): Element =
-      types.asElement(t)
+    private def asElement(tm: TypeMirror): Option[Element] =
+      Option(types.asElement(tm))
 
-    //TODO: consider support for nested classes
-    private def enclosingType(elem: Element): Option[TypeElement] =
-      elem match {
-        case e: TypeElement if (e ne e.getSimpleName) && (e.getSimpleName.length() > 0) => Some(e)
-        case e: Element => enclosingType(elem.getEnclosingElement)
+    private def asTypeElement(node: ExpressionTree): Option[TypeElement] =
+      typeOf(node) match {
+        case Some(tm) => asElement(tm) match {
+          case Some(te: TypeElement) => Some(te)
+          case _ => None
+        }
         case _ => None
       }
 
-    private def findCaller(node: MethodInvocationTree): Option[ExecutableElement] =
-      Option(trees.getScope(getCurrentPath).getEnclosingMethod)
-
-    private def findCallee(node: MethodInvocationTree): Option[ExecutableElement] =
-      node.getMethodSelect match {
-        case s :MemberSelectTree => findCallee(s)
-        case _ => None
-      }
-
-    private def findCallee(node: MemberSelectTree): Option[ExecutableElement] =
-      (asElement(typeOf(node.getExpression)), typeOf(node)) match {
-        case (t :TypeElement, m: ExecutableType) => findMethod(t, m, node.getIdentifier)
-        case _ => None
-      }
-
-    private def findMethod(declaredType :TypeElement, methodType: ExecutableType, methodName: Name): Option[ExecutableElement] =
-      declaredType.getEnclosedElements.toList.filter({
-          case ex: ExecutableElement =>
-            ex.getSimpleName.equals(methodName) && types.isSubsignature(methodType, ex.asType().asInstanceOf[ExecutableType])
-          case _ => false
-      }) match {
-        case m :: _ => Some(m.asInstanceOf[ExecutableElement])
-        case _ => None
-      }
-
-    private def lift(call: (ExecutableElement, ExecutableElement)): Option[(TypeElement, TypeElement)] = {
-      val (caller, callee) = call
-      (enclosingType(caller), enclosingType(callee)) match {
-        case (Some(callerType), Some(calleeType)) => Some(callerType, calleeType)
-        case _ => None
-      }
-    }
-
-    private def asCall(node: MethodInvocationTree): Option[(ExecutableElement, ExecutableElement)] =
-      try {
-        for {
-          caller <- findCaller(node)
-          callee <- findCallee(node)
-        } yield (caller, callee)
-      } catch {
-        case e: Exception => None
-      }
+    private def enclosingType(node: ExpressionTree): Option[TypeElement] =
+      Option(trees.getScope(TreePath.getPath(getCurrentPath.getCompilationUnit, node)).getEnclosingClass)
 
     private def asClassCall(node: MethodInvocationTree): Option[(TypeElement, TypeElement)] =
-      asCall(node) match {
-        case Some(call) => lift(call)
+      node.getMethodSelect match {
+        case s: MemberSelectTree => (enclosingType(node), asTypeElement(s.getExpression)) match {
+          case (Some(caller), Some(callee)) => Some(caller, callee)
+          case _ => None
+        }
         case _ => None
       }
 
@@ -100,6 +64,20 @@ private[services] final class JavacParser extends Parser {
           currentAst = Some(Ast(ast.imports, ast.className, ast.calls :+ callee.getQualifiedName.toString))
           super.visitMethodInvocation(node, p)
         case _ => super.visitMethodInvocation(node, p)
+      }
+
+    private def asClassCall(node: NewClassTree): Option[(TypeElement, TypeElement)] =
+      (enclosingType(node), asTypeElement(node.getIdentifier)) match {
+        case (Some(caller), Some(callee)) => Some(caller, callee)
+        case _ => None
+      }
+
+    override def visitNewClass(node: NewClassTree, p: Void) =
+      (asClassCall(node), currentAst) match {
+        case (Some((caller, callee)), Some(ast)) =>
+          currentAst = Some(Ast(ast.imports, ast.className, ast.calls :+ callee.getQualifiedName.toString))
+          super.visitNewClass(node, p)
+        case _ => super.visitNewClass(node, p)
       }
 
     private def imports(node: ClassTree): Seq[String] =
@@ -112,9 +90,7 @@ private[services] final class JavacParser extends Parser {
       trees.getElement(getCurrentPath) match {
         case typ :TypeElement if typ.getEnclosingElement.getKind == ElementKind.PACKAGE =>
           val imported = imports(node)
-          //TODO: for now, add all imported classes as potential callees
-          //currentAst = Some(Ast(imported, typ.getQualifiedName.toString, Seq()))
-          currentAst = Some(Ast(imported, typ.getQualifiedName.toString, imported))
+          currentAst = Some(Ast(imported, typ.getQualifiedName.toString, Seq()))
           //TODO: define string content
           //val stringContent = node.toString
           val stringContent = getCurrentPath.getCompilationUnit.toString

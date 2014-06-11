@@ -19,13 +19,13 @@ private[services] final class ClassAndImportsParser extends Parser {
 
   val logger = Logger(classOf[ClassAndImportsParser].getSimpleName)
 
-  override def apply(inputs: Seq[(String, InputStream)]) =
+  override def apply(inputs: Seq[(String, InputStream)]): Seq[(Ast, String)] =
     for {
       (name, input) <- inputs
-      ast <- ast(input)
+      ast <- apply(input)
     } yield ast
 
-  private def ast(input: InputStream): Seq[(Ast, String)] =
+  private def apply(input: InputStream): Seq[(Ast, String)] =
     parse(input) match {
       case Some(unit) =>
         val imports = getImports(unit)
