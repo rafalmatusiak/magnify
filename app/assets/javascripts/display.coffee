@@ -26,6 +26,8 @@ $ ->
     calls: (link) -> Math.min(link.count / 10.0, 5)
     runtimeCalls: (link) -> Math.min(link.count / 10.0, 5)
 
+  linkKindsWithArrowhead = ["package-calls", "package-runtime-calls", "calls", "runtime-calls"]
+
   makeSvg = (jsonAddress) ->
     width = $("#chart").width()
     height = $("#chart").height()
@@ -63,6 +65,8 @@ $ ->
         when "imports" then defaultLinkWidths.imports(link)
         when "calls" then defaultLinkWidths.calls(link)
         when "runtime-calls" then defaultLinkWidths.runtimeCalls(link)
+
+    pageRankSize = (d) -> 3 + Math.max(3, 100.0 * d["page-rank"])
 
     force = d3.layout.force()
       .charge(-120)
@@ -103,7 +107,21 @@ $ ->
         .attr("class", "link")
         .style("stroke-width", linkWidth)
         .style("stroke", linkColor)
+        .attr("marker-end", (d) -> if (d.source != d.target) then "url(##{d.kind})" else "")
 
+      svg.append("svg:defs").selectAll("marker")
+        .data(linkKindsWithArrowhead)
+        .enter().append("svg:marker")
+        .attr("id", (d) -> d )
+        .attr("viewBox", "0 0 10 10")
+        .attr("refX", 5)
+        .attr("refY", 5)
+        .attr("markerWidth", 4)
+        .attr("markerHeight", 3)
+        .attr("orient", "auto")
+        .style("fill", "#000000")
+        .append("svg:path")
+        .attr("d", "M 0 0 L 10 5 L 0 10 z")
 
       linkedByIndex = {}
       json.edges.forEach((d) -> linkedByIndex[d.source.index + "," + d.target.index] = 1)
@@ -116,7 +134,7 @@ $ ->
         .enter()
         .append("circle")
         .attr("class", "node")
-        .attr("r", (d) -> 3 + Math.max(3, 100.0 * d["page-rank"]))
+        .attr("r", pageRankSize)
         .style("fill", color)
         .call(force.drag)
 
@@ -134,8 +152,26 @@ $ ->
         link
           .attr("x1", (d) -> d.source.x)
           .attr("y1", (d) -> d.source.y)
-          .attr("x2", (d) -> d.target.x)
-          .attr("y2", (d) -> d.target.y)
+          .attr("x2", (d) ->
+            if (d.kind not in linkKindsWithArrowhead or d.target.x == d.source.x)
+              ox = 0
+            else
+              dx = d.target.x - d.source.x
+              dy = d.target.y - d.source.y
+              dr = Math.sqrt(dx * dx + dy * dy)
+              ox = (dx * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + pageRankSize(d.target))) / dr
+            d.target.x - ox
+          )
+          .attr("y2", (d) ->
+            if (d.kind not in linkKindsWithArrowhead or d.target.y == d.source.y)
+              oy = 0
+            else
+              dx = d.target.x - d.source.x
+              dy = d.target.y - d.source.y
+              dr = Math.sqrt(dx * dx + dy * dy)
+              oy = (dy * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + pageRankSize(d.target))) / dr
+            d.target.y - oy
+          )
         node
           .attr("cx", (d) -> d.x)
           .attr("cy", (d) -> d.y)
@@ -252,6 +288,8 @@ $ ->
       .links(json.edges)
       .start()
 
+      linkMarkerEnd = (d) -> if (linkColor(d) != "transparent" and d.source != d.target) then "url(##{d.kind})" else ""
+
       link = svg.selectAll("line.link")
       .data(json.edges)
       .enter()
@@ -259,6 +297,21 @@ $ ->
       .attr("class", "link")
       .style("stroke-width", linkWidth)
       .style("stroke", "transparent")
+      .attr("marker-end", linkMarkerEnd)
+
+      arrowhead = svg.append("svg:defs").selectAll("marker")
+      .data(linkKindsWithArrowhead)
+      .enter().append("svg:marker")
+      .attr("id", (d) -> d )
+      .attr("viewBox", "0 0 10 10")
+      .attr("refX", 5)
+      .attr("refY", 5)
+      .attr("markerWidth", 4)
+      .attr("markerHeight", 3)
+      .attr("orient", "auto")
+      .style("fill", "#000000")
+      .append("svg:path")
+      .attr("d", "M 0 0 L 10 5 L 0 10 z")
 
       check = (selector, attr) ->
         $(selector).on "click", ->
@@ -268,6 +321,7 @@ $ ->
           else
             linkColors[attr] = "transparent"
             strengths[attr] = 0
+          link.attr("marker-end", linkMarkerEnd)
           link.style("stroke", linkColor)
           force.linkStrength(strength).start()
         $(selector).triggerHandler("click")
@@ -314,6 +368,7 @@ $ ->
           else
             nodeSizes[kind] = defaultNodeSizes[kind]
           node.attr("r", nodeSize).call(force.drag)
+          force.linkStrength(strength).start()
         $("""input[name="#{input}"]""").triggerHandler("click")
       selectNodeSize("package-node-size", "package")
       selectNodeSize("class-node-size", "class")
@@ -332,8 +387,26 @@ $ ->
         link
         .attr("x1", (d) -> d.source.x)
         .attr("y1", (d) -> d.source.y)
-        .attr("x2", (d) -> d.target.x)
-        .attr("y2", (d) -> d.target.y)
+        .attr("x2", (d) ->
+          if (d.kind not in linkKindsWithArrowhead or d.target.x == d.source.x)
+            ox = 0
+          else
+            dx = d.target.x - d.source.x
+            dy = d.target.y - d.source.y
+            dr = Math.sqrt(dx * dx + dy * dy)
+            ox = (dx * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + nodeSizes[d.target.kind](d.target))) / dr
+          d.target.x - ox
+        )
+        .attr("y2", (d) ->
+          if (d.kind not in linkKindsWithArrowhead or d.target.y == d.source.y)
+            oy = 0
+          else
+            dx = d.target.x - d.source.x
+            dy = d.target.y - d.source.y
+            dr = Math.sqrt(dx * dx + dy * dy)
+            oy = (dy * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + nodeSizes[d.target.kind](d.target))) / dr
+          d.target.y - oy
+        )
         node
         .attr("cx", (d) -> d.x)
         .attr("cy", (d) -> d.y)
