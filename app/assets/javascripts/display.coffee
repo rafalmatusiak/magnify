@@ -75,6 +75,14 @@ $ ->
       .size([width, height])
       .gravity(0.2)
 
+    scale = 1
+
+    isLabelDisplayable = (d) -> scale >= 3
+
+    labelDisplay = (d) -> if isLabelDisplayable(d) then "" else "none"
+
+    label = {}
+
     svg = d3
       .select("#chart")
       .append("svg:svg")
@@ -83,7 +91,9 @@ $ ->
       .attr("pointer-events", "all")
       .append("svg:g")
       .call(d3.behavior.zoom().on("zoom", ->
+        scale = d3.event.scale
         svg.attr("transform", "translate(#{d3.event.translate}) scale(#{d3.event.scale})")
+        label.style("display", labelDisplay)
       ))
       .append("svg:g")
 
@@ -142,6 +152,16 @@ $ ->
         .append("title")
         .text((d) -> d.name)
 
+      label = svg.selectAll("text.node-label")
+        .data(json.nodes)
+        .enter().append("text")
+        .attr("class", "node-label")
+        .attr("text-anchor", "middle")
+        .attr("dy", ".7em")
+        .attr("dx", "3em")
+        .style("display", labelDisplay)
+        .text((d) -> d.name)
+
       svg
         .style("opacity", 1e-6)
         .transition()
@@ -175,6 +195,9 @@ $ ->
         node
           .attr("cx", (d) -> d.x)
           .attr("cy", (d) -> d.y)
+        label
+          .attr("x", (d) -> d.x)
+          .attr("y", (d) -> d.y)
 
   customSvg = (jsonAddress) ->
     width = $("#chart").width()
@@ -263,6 +286,14 @@ $ ->
     .size([width, height])
     .gravity(0.2)
 
+    scale = 1
+
+    isLabelDisplayable = (d) -> scale >= 3
+
+    labelDisplay = (d) -> if isLabelDisplayable(d) then "" else "none"
+
+    label = {}
+
     svg = d3
     .select("#chart")
     .append("svg:svg")
@@ -271,7 +302,9 @@ $ ->
     .attr("pointer-events", "all")
     .append("svg:g")
     .call(d3.behavior.zoom().on("zoom", ->
+      scale = d3.event.scale
       svg.attr("transform", "translate(#{d3.event.translate}) scale(#{d3.event.scale})")
+      label.style("display", labelDisplay)
     ))
     .append("svg:g")
 
@@ -348,6 +381,16 @@ $ ->
       .style("fill", "#000000")
       .call(force.drag)
 
+      label = svg.selectAll("text.node-label")
+      .data(json.nodes)
+      .enter().append("text")
+      .attr("class", "node-label")
+      .attr("text-anchor", "middle")
+      .attr("dy", ".7em")
+      .attr("dx", "3em")
+      .style("display", labelDisplay)
+      .text((d) -> d.name)
+
       selectNodeColor = (input, kind) ->
         $("""input[name="#{input}"]""").on "click", ->
           $this = $(this)
@@ -410,6 +453,9 @@ $ ->
         node
         .attr("cx", (d) -> d.x)
         .attr("cy", (d) -> d.y)
+        label
+        .attr("x", (d) -> d.x)
+        .attr("y", (d) -> d.y)
 
   clearSvg = ->
     $("#chart").empty()
