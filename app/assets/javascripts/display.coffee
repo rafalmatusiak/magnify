@@ -139,6 +139,42 @@ $ ->
       isConnected = (a, b) ->
         linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index
 
+      neighbours = (d, isRelated) ->
+        json.edges
+        .filter((link) -> (link.source.index == d.index || link.target.index == d.index) && isRelated(link))
+        .map((link) -> if link.source.index == d.index then link.target else link.source)
+
+      closure = (d, relation) ->
+        related = []
+        nextRelated = [d]
+        while (nextRelated.length > 0)
+          nextRelated = [].concat.apply([], nextRelated.map((n) -> relation(n))).filter((n) -> n not in related)
+          related = related.concat nextRelated
+        related
+
+      blendColor = (c1, c2, alpha) ->
+        rgb1 = d3.rgb(c1)
+        rgb2 = d3.rgb(c2)
+        d3.rgb(rgb1.r * alpha + rgb2.r * (1 - alpha), rgb1.g * alpha + rgb2.g * (1 - alpha), rgb1.b * alpha + rgb2.b * (1 - alpha)).toString()
+
+      showReferenced = (opacity, detectCycle) ->
+        (d) ->
+          directReference = (d) -> neighbours(d, (link) -> link.source.index == d.index && link.target.index != d.index)
+          directlyReferenced = directReference(d)
+          referenced = closure(d, directReference)
+          link
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o.source in referenced && o.target in referenced || o.source is d then 1 else 0)
+          label
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
+          node
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
+          .transition().duration(750).style("fill", (o) ->
+            if opacity is 1 || o in directlyReferenced || o is d then color(o) else blendColor(color(o), $("body").css("background"), opacity)
+          )
+          .transition().duration(750).style("stroke", (o) ->
+            if not detectCycle || not (o is d) then "" else if d in referenced then "#ff0000" else "#00ff00"
+          )
+
       node = svg.selectAll("circle.node")
         .data(json.nodes)
         .enter()
@@ -147,6 +183,8 @@ $ ->
         .attr("r", pageRankSize)
         .style("fill", color)
         .call(force.drag)
+        .on("mouseover", showReferenced(.1, true))
+        .on("mouseout", showReferenced(1, false))
 
       node
         .append("title")
@@ -372,6 +410,42 @@ $ ->
       isConnected = (a, b) ->
         linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index
 
+      neighbours = (d, isRelated) ->
+        json.edges
+        .filter((link) -> (link.source.index == d.index || link.target.index == d.index) && isRelated(link))
+        .map((link) -> if link.source.index == d.index then link.target else link.source)
+
+      closure = (d, relation) ->
+        related = []
+        nextRelated = [d]
+        while (nextRelated.length > 0)
+          nextRelated = [].concat.apply([], nextRelated.map((n) -> relation(n))).filter((n) -> n not in related)
+          related = related.concat nextRelated
+        related
+
+      blendColor = (c1, c2, alpha) ->
+        rgb1 = d3.rgb(c1)
+        rgb2 = d3.rgb(c2)
+        d3.rgb(rgb1.r * alpha + rgb2.r * (1 - alpha), rgb1.g * alpha + rgb2.g * (1 - alpha), rgb1.b * alpha + rgb2.b * (1 - alpha)).toString()
+
+      showReferenced = (opacity, detectCycle) ->
+        (d) ->
+          directReference = (d) -> neighbours(d, (link) -> link.source.index == d.index && link.target.index != d.index && not (linkColor(link) is "transparent"))
+          directlyReferenced = directReference(d)
+          referenced = closure(d, directReference)
+          link
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o.source in referenced && o.target in referenced || o.source is d then 1 else 0)
+          label
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
+          node
+          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
+          .transition().duration(750).style("fill", (o) ->
+            if opacity is 1 || o in directlyReferenced || o is d then nodeColor(o) else blendColor(nodeColor(o), $("body").css("background"), opacity)
+          )
+          .transition().duration(750).style("stroke", (o) ->
+            if not detectCycle || not (o is d) then "" else if d in referenced then "#ff0000" else "#00ff00"
+          )
+
       node = svg.selectAll("circle.node")
       .data(json.nodes)
       .enter()
@@ -380,6 +454,8 @@ $ ->
       .attr("r", 5)
       .style("fill", "#000000")
       .call(force.drag)
+      .on("mouseover", showReferenced(.1, true))
+      .on("mouseout", showReferenced(1, false))
 
       label = svg.selectAll("text.node-label")
       .data(json.nodes)
