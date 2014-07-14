@@ -207,6 +207,8 @@ $ ->
         .style("opacity", 1)
 
       force.on "tick", ->
+        nodeStrokeWidth = parseFloat(node.style("stroke-width"))
+        nodeStrokeWidth = 0 if isNaN(nodeStrokeWidth)
         link
           .attr("x1", (d) -> d.source.x)
           .attr("y1", (d) -> d.source.y)
@@ -217,7 +219,7 @@ $ ->
               dx = d.target.x - d.source.x
               dy = d.target.y - d.source.y
               dr = Math.sqrt(dx * dx + dy * dy)
-              ox = (dx * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + pageRankSize(d.target))) / dr
+              ox = (dx * (linkWidth(d) + 2 * nodeStrokeWidth + pageRankSize(d.target))) / dr
             d.target.x - ox
           )
           .attr("y2", (d) ->
@@ -227,7 +229,7 @@ $ ->
               dx = d.target.x - d.source.x
               dy = d.target.y - d.source.y
               dr = Math.sqrt(dx * dx + dy * dy)
-              oy = (dy * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + pageRankSize(d.target))) / dr
+              oy = (dy * (linkWidth(d) + 2 * nodeStrokeWidth + pageRankSize(d.target))) / dr
             d.target.y - oy
           )
         node
@@ -503,6 +505,8 @@ $ ->
       .style("opacity", 1)
 
       force.on "tick", ->
+        nodeStrokeWidth = parseFloat(node.style("stroke-width"))
+        nodeStrokeWidth = 0 if isNaN(nodeStrokeWidth)
         link
         .attr("x1", (d) -> d.source.x)
         .attr("y1", (d) -> d.source.y)
@@ -513,7 +517,7 @@ $ ->
             dx = d.target.x - d.source.x
             dy = d.target.y - d.source.y
             dr = Math.sqrt(dx * dx + dy * dy)
-            ox = (dx * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + nodeSizes[d.target.kind](d.target))) / dr
+            ox = (dx * (linkWidth(d) + 2 * nodeStrokeWidth + nodeSizes[d.target.kind](d.target))) / dr
           d.target.x - ox
         )
         .attr("y2", (d) ->
@@ -523,7 +527,7 @@ $ ->
             dx = d.target.x - d.source.x
             dy = d.target.y - d.source.y
             dr = Math.sqrt(dx * dx + dy * dy)
-            oy = (dy * (linkWidth(d) + 2*parseFloat(node.style("stroke-width")) + nodeSizes[d.target.kind](d.target))) / dr
+            oy = (dy * (linkWidth(d) + 2 * nodeStrokeWidth + nodeSizes[d.target.kind](d.target))) / dr
           d.target.y - oy
         )
         node
