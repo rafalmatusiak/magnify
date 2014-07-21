@@ -355,26 +355,47 @@ $ ->
     .attr("fill", "transparent")
     .attr("pointer-events", "all")
 
-    d3.json jsonAddress, (json) ->
-      force
-      .nodes(json.nodes)
-      .links(json.edges)
-      .start()
+    svg
+    .append("g").attr("class", "node")
+    .append("g").attr("class", "link")
+
+    updateSvg = (nodes, edges) ->
+      if nodes?.length
+        force
+        .nodes(nodes)
+        .links(edges)
+        .linkStrength(strength)
+        .start()
+      else
+        force
+        .stop()
 
       linkMarkerEnd = (d) -> if (linkColor(d) != "transparent" and d.source != d.target) then "url(##{d.kind})" else ""
 
-      link = svg.selectAll("line.link")
-      .data(json.edges)
+      link = svg.select(".link").selectAll("line.link")
+      .data(edges)
+
+      link
       .enter()
       .append("svg:line")
+
+      link
       .attr("class", "link")
       .style("stroke-width", linkWidth)
-      .style("stroke", "transparent")
+      .style("stroke", linkColor)
       .attr("marker-end", linkMarkerEnd)
+
+      link
+      .exit()
+      .remove()
 
       arrowhead = svg.append("svg:defs").selectAll("marker")
       .data(linkKindsWithArrowhead)
+
+      arrowhead
       .enter().append("svg:marker")
+
+      arrowhead
       .attr("id", (d) -> d )
       .attr("viewBox", "0 0 10 10")
       .attr("refX", 5)
@@ -386,34 +407,18 @@ $ ->
       .append("svg:path")
       .attr("d", "M 0 0 L 10 5 L 0 10 z")
 
-      check = (selector, attr) ->
-        $(selector).on "click", ->
-          if ($(this).is(":checked"))
-            linkColors[attr] = defaultLinkColors[attr]
-            strengths[attr] = defaultStrengths[attr]
-          else
-            linkColors[attr] = "transparent"
-            strengths[attr] = 0
-          link.attr("marker-end", linkMarkerEnd)
-          link.style("stroke", linkColor)
-          force.linkStrength(strength).start()
-        $(selector).triggerHandler("click")
-      check(".check-contains", "inPackage")
-      check(".check-imports", "packageImports")
-      check(".check-calls", "packageCalls")
-      check(".check-runtime-calls", "packageRuntimeCalls")
-      check(".check-imports", "imports")
-      check(".check-calls", "calls")
-      check(".check-runtime-calls", "runtimeCalls")
+      arrowhead
+      .exit()
+      .remove()
 
       linkedByIndex = {}
-      json.edges.forEach((d) -> linkedByIndex[d.source.index + "," + d.target.index] = 1)
+      edges.forEach((d) -> linkedByIndex[d.source.index + "," + d.target.index] = 1)
 
       isConnected = (a, b) ->
         linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index
 
       neighbours = (d, isRelated) ->
-        json.edges
+        edges
         .filter((link) -> (link.source.index == d.index || link.target.index == d.index) && isRelated(link))
         .map((link) -> if link.source.index == d.index then link.target else link.source)
 
@@ -448,20 +453,32 @@ $ ->
             if not detectCycle || not (o is d) then "" else if d in referenced then "#ff0000" else "#00ff00"
           )
 
-      node = svg.selectAll("circle.node")
-      .data(json.nodes)
+      node = svg.select(".node").selectAll("circle.node")
+      .data(nodes)
+
+      node
       .enter()
       .append("circle")
+
+      node
       .attr("class", "node")
-      .attr("r", 5)
-      .style("fill", "#000000")
+      .attr("r", nodeSize)
+      .style("fill", nodeColor)
       .call(force.drag)
       .on("mouseover", showReferenced(.1, true))
       .on("mouseout", showReferenced(1, false))
 
+      node
+      .exit()
+      .remove()
+
       label = svg.selectAll("text.node-label")
-      .data(json.nodes)
+      .data(nodes)
+
+      label
       .enter().append("text")
+
+      label
       .attr("class", "node-label")
       .attr("text-anchor", "middle")
       .attr("dy", ".7em")
@@ -469,40 +486,13 @@ $ ->
       .style("display", labelDisplay)
       .text((d) -> d.name)
 
-      selectNodeColor = (input, kind) ->
-        $("""input[name="#{input}"]""").on "click", ->
-          $this = $(this)
-          if ($this.is(":checked") and $this.attr("value") == "black")
-            nodeColors[kind] = uniformColor
-          else
-            nodeColors[kind] = defaultNodeColors[kind]
-          node.style("fill", nodeColor).call(force.drag)
-        $("""input[name="#{input}"]""").triggerHandler("click")
-      selectNodeColor("package-node-color", "package")
-      selectNodeColor("class-node-color", "class")
-
-      selectNodeSize = (input, kind) ->
-        $("""input[name="#{input}"]""").on "click", ->
-          $this = $(this)
-          if ($this.is(":checked") and $this.attr("value") == "constant")
-            nodeSizes[kind] = constantSize
-          else
-            nodeSizes[kind] = defaultNodeSizes[kind]
-          node.attr("r", nodeSize).call(force.drag)
-          force.linkStrength(strength).start()
-        $("""input[name="#{input}"]""").triggerHandler("click")
-      selectNodeSize("package-node-size", "package")
-      selectNodeSize("class-node-size", "class")
+      label
+      .exit()
+      .remove()
 
       node
       .append("title")
       .text((d) -> d.name)
-
-      svg
-      .style("opacity", 1e-6)
-      .transition()
-      .duration(1000)
-      .style("opacity", 1)
 
       force.on "tick", ->
         nodeStrokeWidth = parseFloat(node.style("stroke-width"))
@@ -537,6 +527,74 @@ $ ->
         .attr("x", (d) -> d.x)
         .attr("y", (d) -> d.y)
 
+    d3.json jsonAddress, (json) ->
+      nodes = json.nodes
+      edges = json.edges
+
+      check = (selector, attr) ->
+        $(selector).on "click", ->
+          if ($(this).is(":checked"))
+            linkColors[attr] = defaultLinkColors[attr]
+            strengths[attr] = defaultStrengths[attr]
+          else
+            linkColors[attr] = "transparent"
+            strengths[attr] = 0
+          updateSvg(nodes, edges)
+        $(selector).triggerHandler("click")
+      check(".check-contains", "inPackage")
+      check(".check-imports", "packageImports")
+      check(".check-calls", "packageCalls")
+      check(".check-runtime-calls", "packageRuntimeCalls")
+      check(".check-imports", "imports")
+      check(".check-calls", "calls")
+      check(".check-runtime-calls", "runtimeCalls")
+
+      checkNodeKind = (selector) ->
+        $(selector).on "click", ->
+          nodeKinds = []
+          if ($(".check-packages").is(":checked"))
+            nodeKinds = nodeKinds.concat "package"
+          if ($(".check-classes").is(":checked"))
+            nodeKinds = nodeKinds.concat "class"
+          nodes = json.nodes.filter((d) -> d.kind in nodeKinds) || []
+          edges = json.edges.filter((d) -> d.source.kind in nodeKinds and d.target.kind in nodeKinds) || []
+          updateSvg(nodes, edges)
+        $(selector).triggerHandler("click")
+      checkNodeKind(".check-packages")
+      checkNodeKind(".check-classes")
+
+      selectNodeColor = (input, kind) ->
+        $("""input[name="#{input}"]""").on "click", ->
+          $this = $(this)
+          if ($this.is(":checked") and $this.attr("value") == "black")
+            nodeColors[kind] = uniformColor
+          else
+            nodeColors[kind] = defaultNodeColors[kind]
+          updateSvg(nodes, edges)
+        $("""input[name="#{input}"]""").triggerHandler("click")
+      selectNodeColor("package-node-color", "package")
+      selectNodeColor("class-node-color", "class")
+
+      selectNodeSize = (input, kind) ->
+        $("""input[name="#{input}"]""").on "click", ->
+          $this = $(this)
+          if ($this.is(":checked") and $this.attr("value") == "constant")
+            nodeSizes[kind] = constantSize
+          else
+            nodeSizes[kind] = defaultNodeSizes[kind]
+          updateSvg(nodes, edges)
+        $("""input[name="#{input}"]""").triggerHandler("click")
+      selectNodeSize("package-node-size", "package")
+      selectNodeSize("class-node-size", "class")
+
+      svg
+      .style("opacity", 1e-6)
+      .transition()
+      .duration(1000)
+      .style("opacity", 1)
+
+      updateSvg(nodes, edges)
+
   clearSvg = ->
     $("#chart").empty()
 
@@ -549,7 +607,7 @@ $ ->
       else
         versionJsonAddress = "0/" + jsonAddress
       if (custom)
-        $(".check-packages").triggerHandler("click")
+        customSvg(versionJsonAddress)
       else
         makeSvg(versionJsonAddress)
     $(".check-optimized").triggerHandler("click")
@@ -804,25 +862,6 @@ $ ->
         </a>
       </li>
       """)
-    checkNodeKind = (selector) ->
-      $(selector).on "click", ->
-        clearSvg()
-        if ($(".check-optimized").is(":checked"))
-          jsonAddress = ""
-        else
-          jsonAddress = "0/"
-        if ($(".check-packages").is(":checked") && $(".check-classes").is(":checked"))
-          jsonAddress += "custom.json"
-        else if ($(".check-packages").is(":checked"))
-          jsonAddress += "customPackages.json"
-        else if ($(".check-classes").is(":checked"))
-          jsonAddress += "customClasses.json"
-        else
-          jsonAddress = ""
-        if (jsonAddress)
-          customSvg(jsonAddress)
-    checkNodeKind(".check-packages")
-    checkNodeKind(".check-classes")
 
     selectDropdown = (selector) ->
       $("#{selector} li").on "click", ->
@@ -860,7 +899,7 @@ $ ->
       )
       $(".optimization-status").addClass("text-warning")
       $(".optimization-status").text("Optimizing...")
-    checkOptimized("customPackages.json", true)
+    checkOptimized("custom.json", true)
 
   $(".packages-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")

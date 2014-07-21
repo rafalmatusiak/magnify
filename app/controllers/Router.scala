@@ -15,8 +15,6 @@ object Router extends Controller {
       Routes.javascriptRouter("jsRoutes")(
         ShowGraph.versionsJson,
         ShowGraph.showCustomJson,
-        ShowGraph.showCustomPackagesJson,
-        ShowGraph.showCustomClassesJson,
         OptimizeGraph.optimize
       )
     ).as("text/javascript")
