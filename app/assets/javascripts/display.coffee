@@ -33,217 +33,6 @@ $ ->
     height = $("#chart").height()
 
     badness = d3.scale.linear().domain([-1, 300]).range(["green", "red"])
-    color = (d) ->
-      badness(d["metric--lines-of-code"])
-
-    strength = (link) ->
-      switch link.kind
-        when "in-package" then defaultStrengths.inPackage
-        when "package-imports" then defaultStrengths.packageImports
-        when "package-calls" then defaultStrengths.packageCalls
-        when "package-runtime-calls" then defaultStrengths.packageRuntimeCalls
-        when "imports" then defaultStrengths.imports
-        when "calls" then defaultStrengths.calls
-        when "runtime-calls" then defaultStrengths.runtimeCalls
-
-    linkColor = (link) ->
-      switch link.kind
-        when "in-package" then defaultLinkColors.inPackage
-        when "package-imports" then defaultLinkColors.packageImports
-        when "package-calls" then defaultLinkColors.packageCalls
-        when "package-runtime-calls" then defaultLinkColors.packageRuntimeCalls
-        when "imports" then defaultLinkColors.imports
-        when "calls" then defaultLinkColors.calls
-        when "runtime-calls" then defaultLinkColors.runtimeCalls
-
-    linkWidth = (link) ->
-      switch link.kind
-        when "in-package" then defaultLinkWidths.inPackage(link)
-        when "package-imports" then defaultLinkWidths.packageImports(link)
-        when "package-calls" then defaultLinkWidths.packageCalls(link)
-        when "package-runtime-calls" then defaultLinkWidths.packageRuntimeCalls(link)
-        when "imports" then defaultLinkWidths.imports(link)
-        when "calls" then defaultLinkWidths.calls(link)
-        when "runtime-calls" then defaultLinkWidths.runtimeCalls(link)
-
-    pageRankSize = (d) -> 3 + Math.max(3, 100.0 * d["page-rank"])
-
-    force = d3.layout.force()
-      .charge(-120)
-      .linkDistance(30)
-      .linkStrength(strength)
-      .size([width, height])
-      .gravity(0.2)
-
-    scale = 1
-
-    isLabelDisplayable = (d) -> scale >= 3
-
-    labelDisplay = (d) -> if isLabelDisplayable(d) then "" else "none"
-
-    label = {}
-
-    svg = d3
-      .select("#chart")
-      .append("svg:svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("pointer-events", "all")
-      .append("svg:g")
-      .call(d3.behavior.zoom().on("zoom", ->
-        scale = d3.event.scale
-        svg.attr("transform", "translate(#{d3.event.translate}) scale(#{d3.event.scale})")
-        label.style("display", labelDisplay)
-      ))
-      .append("svg:g")
-
-    svg
-      .append("svg:rect")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("fill", "transparent")
-      .attr("pointer-events", "all")
-
-    d3.json jsonAddress, (json) ->
-      force
-        .nodes(json.nodes)
-        .links(json.edges)
-        .start()
-
-      link = svg.selectAll("line.link")
-        .data(json.edges)
-        .enter()
-        .append("svg:line")
-        .attr("class", "link")
-        .style("stroke-width", linkWidth)
-        .style("stroke", linkColor)
-        .attr("marker-end", (d) -> if (d.source != d.target) then "url(##{d.kind})" else "")
-
-      svg.append("svg:defs").selectAll("marker")
-        .data(linkKindsWithArrowhead)
-        .enter().append("svg:marker")
-        .attr("id", (d) -> d )
-        .attr("viewBox", "0 0 10 10")
-        .attr("refX", 5)
-        .attr("refY", 5)
-        .attr("markerWidth", 4)
-        .attr("markerHeight", 3)
-        .attr("orient", "auto")
-        .style("fill", "#000000")
-        .append("svg:path")
-        .attr("d", "M 0 0 L 10 5 L 0 10 z")
-
-      linkedByIndex = {}
-      json.edges.forEach((d) -> linkedByIndex[d.source.index + "," + d.target.index] = 1)
-
-      isConnected = (a, b) ->
-        linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index
-
-      neighbours = (d, isRelated) ->
-        json.edges
-        .filter((link) -> (link.source.index == d.index || link.target.index == d.index) && isRelated(link))
-        .map((link) -> if link.source.index == d.index then link.target else link.source)
-
-      closure = (d, relation) ->
-        related = []
-        nextRelated = [d]
-        while (nextRelated.length > 0)
-          nextRelated = [].concat.apply([], nextRelated.map((n) -> relation(n))).filter((n) -> n not in related)
-          related = related.concat nextRelated
-        related
-
-      blendColor = (c1, c2, alpha) ->
-        rgb1 = d3.rgb(c1)
-        rgb2 = d3.rgb(c2)
-        d3.rgb(rgb1.r * alpha + rgb2.r * (1 - alpha), rgb1.g * alpha + rgb2.g * (1 - alpha), rgb1.b * alpha + rgb2.b * (1 - alpha)).toString()
-
-      showReferenced = (opacity, detectCycle) ->
-        (d) ->
-          directReference = (d) -> neighbours(d, (link) -> link.source.index == d.index && link.target.index != d.index)
-          directlyReferenced = directReference(d)
-          referenced = closure(d, directReference)
-          link
-          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o.source in referenced && o.target in referenced || o.source is d then 1 else 0)
-          label
-          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
-          node
-          .transition().duration(750).style("opacity", (o) -> if opacity is 1 || o in referenced || o is d then 1 else 0)
-          .transition().duration(750).style("fill", (o) ->
-            if opacity is 1 || o in directlyReferenced || o is d then color(o) else blendColor(color(o), $("body").css("background"), opacity)
-          )
-          .transition().duration(750).style("stroke", (o) ->
-            if not detectCycle || not (o is d) then "" else if d in referenced then "#ff0000" else "#00ff00"
-          )
-
-      node = svg.selectAll("circle.node")
-        .data(json.nodes)
-        .enter()
-        .append("circle")
-        .attr("class", "node")
-        .attr("r", pageRankSize)
-        .style("fill", color)
-        .call(force.drag)
-        .on("mouseover", showReferenced(.1, true))
-        .on("mouseout", showReferenced(1, false))
-
-      node
-        .append("title")
-        .text((d) -> d.name)
-
-      label = svg.selectAll("text.node-label")
-        .data(json.nodes)
-        .enter().append("text")
-        .attr("class", "node-label")
-        .attr("text-anchor", "middle")
-        .attr("dy", ".7em")
-        .attr("dx", "3em")
-        .style("display", labelDisplay)
-        .text((d) -> d.name)
-
-      svg
-        .style("opacity", 1e-6)
-        .transition()
-        .duration(1000)
-        .style("opacity", 1)
-
-      force.on "tick", ->
-        nodeStrokeWidth = parseFloat(node.style("stroke-width"))
-        nodeStrokeWidth = 0 if isNaN(nodeStrokeWidth)
-        link
-          .attr("x1", (d) -> d.source.x)
-          .attr("y1", (d) -> d.source.y)
-          .attr("x2", (d) ->
-            if (d.kind not in linkKindsWithArrowhead or d.target.x == d.source.x)
-              ox = 0
-            else
-              dx = d.target.x - d.source.x
-              dy = d.target.y - d.source.y
-              dr = Math.sqrt(dx * dx + dy * dy)
-              ox = (dx * (linkWidth(d) + 2 * nodeStrokeWidth + pageRankSize(d.target))) / dr
-            d.target.x - ox
-          )
-          .attr("y2", (d) ->
-            if (d.kind not in linkKindsWithArrowhead or d.target.y == d.source.y)
-              oy = 0
-            else
-              dx = d.target.x - d.source.x
-              dy = d.target.y - d.source.y
-              dr = Math.sqrt(dx * dx + dy * dy)
-              oy = (dy * (linkWidth(d) + 2 * nodeStrokeWidth + pageRankSize(d.target))) / dr
-            d.target.y - oy
-          )
-        node
-          .attr("cx", (d) -> d.x)
-          .attr("cy", (d) -> d.y)
-        label
-          .attr("x", (d) -> d.x)
-          .attr("y", (d) -> d.y)
-
-  customSvg = (jsonAddress) ->
-    width = $("#chart").width()
-    height = $("#chart").height()
-
-    badness = d3.scale.linear().domain([-1, 300]).range(["green", "red"])
 
     strengths =
       inPackage: defaultStrengths.inPackage
@@ -264,13 +53,13 @@ $ ->
         when "runtime-calls" then strengths.runtimeCalls
 
     linkColors =
-      inPackage: "transparent"
-      packageImports: "transparent"
-      packageCalls: "transparent"
-      packageRuntimeCalls: "transparent"
-      imports: "transparent"
-      calls: "transparent"
-      runtimeCalls: "transparent"
+      inPackage: defaultLinkColors.inPackage
+      packageImports: defaultLinkColors.packageImports
+      packageCalls: defaultLinkColors.packageCalls
+      packageRuntimeCalls: defaultLinkColors.packageRuntimeCalls
+      imports: defaultLinkColors.imports
+      calls: defaultLinkColors.calls
+      runtimeCalls: defaultLinkColors.runtimeCalls
     linkColor = (link) ->
       switch link.kind
         when "in-package" then linkColors.inPackage
@@ -298,8 +87,8 @@ $ ->
       package: locColor
       class: locColor
     nodeColors =
-      package: uniformColor
-      class: uniformColor
+      package: defaultNodeColors.package
+      class: defaultNodeColors.class
     nodeColor = (node) ->
       switch node.kind
         when "package" then nodeColors.package(node)
@@ -312,8 +101,8 @@ $ ->
       package: pageRankSize
       class: pageRankSize
     nodeSizes =
-      package: constantSize
-      class: constantSize
+      package: defaultNodeSizes.package
+      class: defaultNodeSizes.class
     nodeSize = (node) ->
       switch node.kind
         when "package" then nodeSizes.package(node)
@@ -531,59 +320,72 @@ $ ->
       nodes = json.nodes
       edges = json.edges
 
-      check = (selector, attr) ->
-        $(selector).on "click", ->
-          if ($(this).is(":checked"))
+      checkEdge = (selector, attr) ->
+        displayEdge = (visible) ->
+          if (visible)
             linkColors[attr] = defaultLinkColors[attr]
             strengths[attr] = defaultStrengths[attr]
           else
             linkColors[attr] = "transparent"
             strengths[attr] = 0
           updateSvg(nodes, edges)
-        $(selector).triggerHandler("click")
-      check(".check-contains", "inPackage")
-      check(".check-imports", "packageImports")
-      check(".check-calls", "packageCalls")
-      check(".check-runtime-calls", "packageRuntimeCalls")
-      check(".check-imports", "imports")
-      check(".check-calls", "calls")
-      check(".check-runtime-calls", "runtimeCalls")
+        e = $(selector)
+        displayEdge(not e.length or e.is(":checked"))
+        e.on "click", -> displayEdge($(this).is(":checked"))
+      checkEdge(".check-contains", "inPackage")
+      checkEdge(".check-imports", "packageImports")
+      checkEdge(".check-calls", "packageCalls")
+      checkEdge(".check-runtime-calls", "packageRuntimeCalls")
+      checkEdge(".check-imports", "imports")
+      checkEdge(".check-calls", "calls")
+      checkEdge(".check-runtime-calls", "runtimeCalls")
 
-      checkNodeKind = (selector) ->
-        $(selector).on "click", ->
-          nodeKinds = []
-          if ($(".check-packages").is(":checked"))
-            nodeKinds = nodeKinds.concat "package"
-          if ($(".check-classes").is(":checked"))
-            nodeKinds = nodeKinds.concat "class"
-          nodes = json.nodes.filter((d) -> d.kind in nodeKinds) || []
-          edges = json.edges.filter((d) -> d.source.kind in nodeKinds and d.target.kind in nodeKinds) || []
+      nodeKinds = []
+
+      checkNodeKind = (selector, kind) ->
+        displayNode = (visible) ->
+          if (visible)
+            nodeKinds = nodeKinds.concat kind
+          else
+            nodeKinds = nodeKinds.filter (d) -> d isnt kind
+          nodes = json.nodes.filter (d) -> d.kind in nodeKinds
+          edges = json.edges.filter (d) -> d.source.kind in nodeKinds and d.target.kind in nodeKinds
           updateSvg(nodes, edges)
-        $(selector).triggerHandler("click")
-      checkNodeKind(".check-packages")
-      checkNodeKind(".check-classes")
+        s = $(selector)
+        displayNode(not s.length or s.is(":checked"))
+        s.on "click", -> displayNode($(this).is(":checked"))
+      checkNodeKind(".check-packages", "package")
+      checkNodeKind(".check-classes", "class")
 
       selectNodeColor = (input, kind) ->
-        $("""input[name="#{input}"]""").on "click", ->
-          $this = $(this)
-          if ($this.is(":checked") and $this.attr("value") == "black")
+        setNodeColor = (uniform) ->
+          if (uniform)
             nodeColors[kind] = uniformColor
           else
             nodeColors[kind] = defaultNodeColors[kind]
           updateSvg(nodes, edges)
-        $("""input[name="#{input}"]""").triggerHandler("click")
+        s = $("""input[name="#{input}"]:checked""")
+        setNodeColor(s.length and s.attr("value") == "black")
+        s = $("""input[name="#{input}"]""")
+        s.on "click", ->
+          $this = $(this)
+          setNodeColor($this.is(":checked") and $this.attr("value") == "black")
       selectNodeColor("package-node-color", "package")
       selectNodeColor("class-node-color", "class")
 
       selectNodeSize = (input, kind) ->
-        $("""input[name="#{input}"]""").on "click", ->
-          $this = $(this)
-          if ($this.is(":checked") and $this.attr("value") == "constant")
+        setNodeSize = (constant) ->
+          if (constant)
             nodeSizes[kind] = constantSize
           else
             nodeSizes[kind] = defaultNodeSizes[kind]
           updateSvg(nodes, edges)
-        $("""input[name="#{input}"]""").triggerHandler("click")
+        s = $("""input[name="#{input}"]:checked""")
+        setNodeSize(s.length and s.attr("value") == "constant")
+        s = $("""input[name="#{input}"]""")
+        s.on "click", ->
+          $this = $(this)
+          setNodeSize($this.is(":checked") and $this.attr("value") == "constant")
       selectNodeSize("package-node-size", "package")
       selectNodeSize("class-node-size", "class")
 
@@ -598,19 +400,16 @@ $ ->
   clearSvg = ->
     $("#chart").empty()
 
-  checkOptimized = (jsonAddress, custom) ->
-    $(".check-optimized").unbind("click.svg")
-    $(".check-optimized").on "click.svg", ->
-      clearSvg()
-      if ($(".check-optimized").is(":checked"))
-        versionJsonAddress = jsonAddress
-      else
-        versionJsonAddress = "0/" + jsonAddress
-      if (custom)
-        customSvg(versionJsonAddress)
-      else
-        makeSvg(versionJsonAddress)
-    $(".check-optimized").triggerHandler("click")
+  jsonAddress = (jsonBaseAddress, version) -> (if not not version then version + "/" else "") + jsonBaseAddress
+
+  displaySvg = (jsonBaseAddress, optimized) ->
+    clearSvg()
+    makeSvg(jsonAddress(jsonBaseAddress, if optimized then "" else "0"))
+
+  display = (optimized) -> clearSvg()
+
+  $(".check-optimized").on "click", ->
+    display($(".check-optimized").is(":checked"))
 
   $(".custom-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
@@ -883,7 +682,7 @@ $ ->
           $(".optimization-status").text("")
           $(".check-optimized").prop("disabled", false)
           $(".check-optimized").prop("checked", true)
-          $(".check-optimized").triggerHandler("click")
+          display(true)
         error: (data) ->
           $(".optimization-status").removeClass((index, css) ->
             (css.match(/\btext-\S+/g) || []).join(' ')
@@ -892,41 +691,46 @@ $ ->
           $(".optimization-status").text("Optimization failed!")
           $(".check-optimized").prop("checked", false)
           $(".check-optimized").prop("disabled", true)
-          $(".check-optimized").triggerHandler("click")
+          display(false)
       })
       $(".optimization-status").removeClass((index, css) ->
         (css.match(/\btext-\S+/g) || []).join(' ')
       )
       $(".optimization-status").addClass("text-warning")
       $(".optimization-status").text("Optimizing...")
-    checkOptimized("custom.json", true)
+    display = (optimized) -> displaySvg("custom.json", optimized)
+    display($(".check-optimized").is(":checked"))
 
   $(".packages-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-packages-tab").addClass("active")
     $(".gauges").remove()
-    checkOptimized("packages.json", false)
+    display = (optimized) -> displaySvg("packages.json", optimized)
+    display($(".check-optimized").is(":checked"))
     $("[rel='tooltip']").tooltip()
 
   $(".package-imports-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-imports-tab").addClass("active")
     $(".gauges").remove()
-    checkOptimized("pkgImports.json", false)
+    display = (optimized) -> displaySvg("pkgImports.json", optimized)
+    display($(".check-optimized").is(":checked"))
     $("[rel='tooltip']").tooltip()
 
   $(".package-calls-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-calls-tab").addClass("active")
     $(".gauges").remove()
-    checkOptimized("pkgCalls.json", false)
+    display = (optimized) -> displaySvg("pkgCalls.json", optimized)
+    display($(".check-optimized").is(":checked"))
     $("[rel='tooltip']").tooltip()
 
   $(".class-calls-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-class-calls-tab").addClass("active")
     $(".gauges").remove()
-    checkOptimized("classCalls.json", false)
+    display = (optimized) -> displaySvg("classCalls.json", optimized)
+    display($(".check-optimized").is(":checked"))
     $("[rel='tooltip']").tooltip()
 
   jsRoutes.controllers.ShowGraph.versionsJson($("#projectName").text()).ajax({
@@ -937,5 +741,6 @@ $ ->
       $(".check-optimized").prop("disabled", true)
   })
 
-  $(".packages-button").triggerHandler("click")
+  display = (optimized) -> displaySvg("packages.json", optimized)
+  display($(".check-optimized").is(":checked"))
   $("[rel='tooltip']").tooltip()
