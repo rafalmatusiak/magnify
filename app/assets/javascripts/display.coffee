@@ -448,13 +448,13 @@ $ ->
                           <ul class="dropdown-menu package-node-size">
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="package-node-size" value="constant" checked="checked" style="display: none"/>
+                                <input type="radio" name="package-node-size" value="constant" checked="checked"/>
                                 Constant
                               </label>
                             </a></li>
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="package-node-size" value="page-rank" style="display: none"/>
+                                <input type="radio" name="package-node-size" value="page-rank"/>
                                 Page rank
                               </label></a>
                             </a></li>
@@ -473,13 +473,13 @@ $ ->
                           <ul class="dropdown-menu package-node-color">
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="package-node-color" value="black" checked="checked" style="display: none"/>
+                                <input type="radio" name="package-node-color" value="black" checked="checked"/>
                                 Black
                               </label>
                             </a></li>
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="package-node-color" value="by-avg-loc" style="display: none"/>
+                                <input type="radio" name="package-node-color" value="by-avg-loc"/>
                                 Avg. lines of code / class
                               </label>
                             </a></li>
@@ -506,13 +506,13 @@ $ ->
                           <ul class="dropdown-menu class-node-size">
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="class-node-size" value="constant" checked="checked" style="display: none"/>
+                                <input type="radio" name="class-node-size" value="constant" checked="checked"/>
                                 Constant
                               </label>
                             </a></li>
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="class-node-size" value="page-rank" style="display: none"/>
+                                <input type="radio" name="class-node-size" value="page-rank"/>
                                 Page rank
                               </label></a>
                             </a></li>
@@ -531,13 +531,13 @@ $ ->
                           <ul class="dropdown-menu class-node-color">
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="class-node-color" value="black" checked="checked" style="display: none"/>
+                                <input type="radio" name="class-node-color" value="black" checked="checked"/>
                                 Black
                               </label>
                             </a></li>
                             <li><a>
                               <label class="radio">
-                                <input type="radio" name="class-node-color" value="by-avg-loc" style="display: none"/>
+                                <input type="radio" name="class-node-color" value="by-avg-loc"/>
                                 Avg. lines of code / class
                               </label>
                             </a></li>
