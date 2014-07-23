@@ -329,9 +329,9 @@ $ ->
             linkColors[attr] = "transparent"
             strengths[attr] = 0
           updateSvg(nodes, edges)
-        e = $(selector)
-        displayEdge(not e.length or e.is(":checked"))
-        e.on "click", -> displayEdge($(this).is(":checked"))
+        visible = (s) -> not s.length or s.is(":checked")
+        displayEdge(visible($(selector)))
+        $(selector).on "click", -> displayEdge(visible($(this)))
       checkEdge(".check-contains", "inPackage")
       checkEdge(".check-imports", "packageImports")
       checkEdge(".check-calls", "packageCalls")
@@ -351,9 +351,9 @@ $ ->
           nodes = json.nodes.filter (d) -> d.kind in nodeKinds
           edges = json.edges.filter (d) -> d.source.kind in nodeKinds and d.target.kind in nodeKinds
           updateSvg(nodes, edges)
-        s = $(selector)
-        displayNode(not s.length or s.is(":checked"))
-        s.on "click", -> displayNode($(this).is(":checked"))
+        visible = (s) -> not s.length or s.is(":checked")
+        displayNode(visible($(selector)))
+        $(selector).on "click", -> displayNode(visible($(this)))
       checkNodeKind(".check-packages", "package")
       checkNodeKind(".check-classes", "class")
 
@@ -364,12 +364,9 @@ $ ->
           else
             nodeColors[kind] = defaultNodeColors[kind]
           updateSvg(nodes, edges)
-        s = $("""input[name="#{input}"]:checked""")
-        setNodeColor(s.length and s.attr("value") == "black")
-        s = $("""input[name="#{input}"]""")
-        s.on "click", ->
-          $this = $(this)
-          setNodeColor($this.is(":checked") and $this.attr("value") == "black")
+        uniform = (s) -> s.length and s.is(":checked") and s.attr("value") is "black"
+        setNodeColor(uniform($("""input[name="#{input}"]:checked""")))
+        $("""input[name="#{input}"]""").on "click", -> setNodeColor(uniform($(this)))
       selectNodeColor("package-node-color", "package")
       selectNodeColor("class-node-color", "class")
 
@@ -380,12 +377,9 @@ $ ->
           else
             nodeSizes[kind] = defaultNodeSizes[kind]
           updateSvg(nodes, edges)
-        s = $("""input[name="#{input}"]:checked""")
-        setNodeSize(s.length and s.attr("value") == "constant")
-        s = $("""input[name="#{input}"]""")
-        s.on "click", ->
-          $this = $(this)
-          setNodeSize($this.is(":checked") and $this.attr("value") == "constant")
+        constant = (s) -> s.length and s.is(":checked") and s.attr("value") is "constant"
+        setNodeSize(constant($("""input[name="#{input}"]:checked""")))
+        $("""input[name="#{input}"]""").on "click", -> setNodeSize(constant($(this)))
       selectNodeSize("package-node-size", "package")
       selectNodeSize("class-node-size", "class")
 
