@@ -111,7 +111,7 @@ private[services] final class JavacParser extends Parser {
   }
 
   class CharSequenceJavaFileObject(name: String, content: CharSequence)
-    extends SimpleJavaFileObject(URI.create("string:///"), JavaFileObject.Kind.SOURCE) {
+    extends SimpleJavaFileObject(URI.create("string:///" + name), JavaFileObject.Kind.SOURCE) {
 
     override def getCharContent(ignoreEncodingErrors: Boolean): CharSequence = content
   }
