@@ -17,6 +17,7 @@ import play.api.Logger
 import java.net.URI
 import scala.collection.JavaConversions._
 import scala.Some
+import scala.util.Try
 import magnify.model.Ast
 
 
@@ -59,7 +60,7 @@ private[services] final class JavacParser extends Parser {
       }
 
     override def visitMethodInvocation(node: MethodInvocationTree, p: Void) =
-      (asClassCall(node), currentAst) match {
+      (Try(asClassCall(node)).getOrElse(None), currentAst) match {
         case (Some((caller, callee)), Some(ast)) =>
           currentAst = Some(Ast(ast.imports, ast.className, ast.calls :+ callee.getQualifiedName.toString))
           super.visitMethodInvocation(node, p)
@@ -73,7 +74,7 @@ private[services] final class JavacParser extends Parser {
       }
 
     override def visitNewClass(node: NewClassTree, p: Void) =
-      (asClassCall(node), currentAst) match {
+      (Try(asClassCall(node)).getOrElse(None), currentAst) match {
         case (Some((caller, callee)), Some(ast)) =>
           currentAst = Some(Ast(ast.imports, ast.className, ast.calls :+ callee.getQualifiedName.toString))
           super.visitNewClass(node, p)
@@ -103,10 +104,10 @@ private[services] final class JavacParser extends Parser {
       Option(value).map(_.toSeq).getOrElse(Seq())
 
     override def reduce(r1: Seq[(Ast, String)], r2: Seq[(Ast, String)]) =
-      (if (r1 ne null) r1 else Seq()) ++ (if (r2 ne null) r2 else Seq())
+      Option(r1).getOrElse(Seq()) ++ Option(r2).getOrElse(Seq())
 
     def transform(unit: CompilationUnitTree): Seq[(Ast, String)] =
-      scan(unit, null)
+      Try(scan(unit, null)).getOrElse(Seq())
 
   }
 
