@@ -94,7 +94,7 @@ private[services] final class JavacParser extends Parser {
           currentAst = Some(Ast(imported, typ.getQualifiedName.toString, Seq()))
           //TODO: define string content
           //val stringContent = node.toString
-          val stringContent = getCurrentPath.getCompilationUnit.toString
+          val stringContent = getCurrentPath.getCompilationUnit.getSourceFile.getCharContent(true).toString
           super.visitClass(node, p)
           Seq((currentAst.get, stringContent))
         case _ => super.visitClass(node, p)

@@ -223,7 +223,7 @@ object SoftwareGraph {
         .has("kind", "class")
         .toList foreach {
         case v: Vertex =>
-          val linesOfCode = v.getProperty("source-code").toString.count(_ == '\n')
+          val linesOfCode = v.getProperty("source-code").toString.count(_ == '\n') + 1
           v.setProperty("metric--lines-of-code", linesOfCode)
       }
       graph
