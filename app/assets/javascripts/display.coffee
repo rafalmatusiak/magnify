@@ -162,7 +162,7 @@ $ ->
       linkMarkerEnd = (d) -> if (linkColor(d) != "transparent" and d.source != d.target) then "url(##{d.kind})" else ""
 
       link = svg.select(".link").selectAll("line.link")
-      .data(edges)
+      .data(edges, (d) -> "#{d.source.name},#{d.target.name},#{d.kind}")
 
       link
       .enter()
@@ -179,7 +179,7 @@ $ ->
       .remove()
 
       arrowhead = svg.append("svg:defs").selectAll("marker")
-      .data(linkKindsWithArrowhead)
+      .data(linkKindsWithArrowhead, (d) -> d)
 
       arrowhead
       .enter().append("svg:marker")
@@ -243,11 +243,13 @@ $ ->
           )
 
       node = svg.select(".node").selectAll("circle.node")
-      .data(nodes)
+      .data(nodes, (d) -> d.name)
 
       node
       .enter()
       .append("circle")
+      .append("title")
+      .text((d) -> d.name)
 
       node
       .attr("class", "node")
@@ -262,7 +264,7 @@ $ ->
       .remove()
 
       label = svg.selectAll("text.node-label")
-      .data(nodes)
+      .data(nodes, (d) -> d.name)
 
       label
       .enter().append("text")
@@ -278,10 +280,6 @@ $ ->
       label
       .exit()
       .remove()
-
-      node
-      .append("title")
-      .text((d) -> d.name)
 
       force.on "tick", ->
         nodeStrokeWidth = parseFloat(node.style("stroke-width"))
@@ -320,18 +318,27 @@ $ ->
       nodes = json.nodes
       edges = json.edges
 
+      force
+      .nodes(nodes)
+      .links(edges)
+      .start()
+      .alpha(0)
+
       checkEdge = (selector, attr) ->
-        displayEdge = (visible) ->
+        filterEdges = (visible) ->
           if (visible)
             linkColors[attr] = defaultLinkColors[attr]
             strengths[attr] = defaultStrengths[attr]
           else
             linkColors[attr] = "transparent"
             strengths[attr] = 0
+        displayEdges = (visible) ->
+          filterEdges(visible)
           updateSvg(nodes, edges)
         visible = (s) -> not s.length or s.is(":checked")
-        displayEdge(visible($(selector)))
-        $(selector).on "click", -> displayEdge(visible($(this)))
+        if ($(selector).length)
+          filterEdges(visible($(selector)))
+        $(selector).on "click", -> displayEdges(visible($(this)))
       checkEdge(".check-contains", "inPackage")
       checkEdge(".check-imports", "packageImports")
       checkEdge(".check-calls", "packageCalls")
@@ -343,43 +350,50 @@ $ ->
       nodeKinds = []
 
       checkNodeKind = (selector, kind) ->
-        displayNode = (visible) ->
+        filterNodes = (visible) ->
           if (visible)
             nodeKinds = nodeKinds.concat kind
           else
             nodeKinds = nodeKinds.filter (d) -> d isnt kind
           nodes = json.nodes.filter (d) -> d.kind in nodeKinds
           edges = json.edges.filter (d) -> d.source.kind in nodeKinds and d.target.kind in nodeKinds
+        displayNodes = (visible) ->
+          filterNodes(visible)
           updateSvg(nodes, edges)
         visible = (s) -> not s.length or s.is(":checked")
-        displayNode(visible($(selector)))
-        $(selector).on "click", -> displayNode(visible($(this)))
+        if ($(selector).length)
+          filterNodes(visible($(selector)))
+        $(selector).on "click", -> displayNodes(visible($(this)))
       checkNodeKind(".check-packages", "package")
       checkNodeKind(".check-classes", "class")
 
       selectNodeColor = (input, kind) ->
-        setNodeColor = (uniform) ->
+        setNodeColors = (uniform) ->
           if (uniform)
             nodeColors[kind] = uniformColor
           else
             nodeColors[kind] = defaultNodeColors[kind]
+        updateNodeColors = (uniform) ->
+          setNodeColors(uniform)
           updateSvg(nodes, edges)
         uniform = (s) -> s.length and s.is(":checked") and s.attr("value") is "black"
-        setNodeColor(uniform($("""input[name="#{input}"]:checked""")))
-        $("""input[name="#{input}"]""").on "click", -> setNodeColor(uniform($(this)))
+        setNodeColors(uniform($("""input[name="#{input}"]:checked""")))
+        $("""input[name="#{input}"]""").on "click", -> updateNodeColors(uniform($(this)))
       selectNodeColor("package-node-color", "package")
       selectNodeColor("class-node-color", "class")
 
       selectNodeSize = (input, kind) ->
-        setNodeSize = (constant) ->
+        setNodeSizes = (constant) ->
           if (constant)
             nodeSizes[kind] = constantSize
           else
             nodeSizes[kind] = defaultNodeSizes[kind]
+        updateNodeSizes = (constant) ->
+          setNodeSizes(constant)
           updateSvg(nodes, edges)
         constant = (s) -> s.length and s.is(":checked") and s.attr("value") is "constant"
-        setNodeSize(constant($("""input[name="#{input}"]:checked""")))
-        $("""input[name="#{input}"]""").on "click", -> setNodeSize(constant($(this)))
+        setNodeSizes(constant($("""input[name="#{input}"]:checked""")))
+        $("""input[name="#{input}"]""").on "click", -> updateNodeSizes(constant($(this)))
       selectNodeSize("package-node-size", "package")
       selectNodeSize("class-node-size", "class")
 
