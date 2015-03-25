@@ -111,29 +111,6 @@ private[services] final class JavacParser extends Parser {
 
   }
 
-  class CharSequenceJavaFileObject(name: String, content: CharSequence)
-    extends SimpleJavaFileObject(URI.create("string:///" + name), JavaFileObject.Kind.SOURCE) {
-
-    override def getCharContent(ignoreEncodingErrors: Boolean): CharSequence = content
-  }
-
-  class JavaClassObject(name: String, kind: JavaFileObject.Kind)
-    extends SimpleJavaFileObject(URI.create("string:///" + name.replace('.', '/') + kind.extension), kind) {
-
-    private val os = new ByteArrayOutputStream()
-
-    def bytes = os.toByteArray
-
-    override def openOutputStream(): OutputStream = os
-  }
-
-  class ClassFileManager(standardManager: StandardJavaFileManager)
-    extends ForwardingJavaFileManager[StandardJavaFileManager](standardManager) {
-
-    override def getJavaFileForInput(location: JavaFileManager.Location, className: String, kind: JavaFileObject.Kind): JavaFileObject =
-      new JavaClassObject(className, kind)
-  }
-
   override def apply(inputs: Seq[(String, InputStream)]): Seq[(Ast, String)] =
     parse(inputs)
 
@@ -144,9 +121,11 @@ private[services] final class JavacParser extends Parser {
       }
 
       val compiler = JavacTool.create() //ToolProvider.getSystemJavaCompiler()
-      val fileManager = new ClassFileManager(compiler.getStandardFileManager(null, null, null))
+      val fileManager = compiler.getStandardFileManager(null, null, null)
       val fileObjects = contents map {
-        case (name, content) => new CharSequenceJavaFileObject(name, content)
+        case (name, content) => new SimpleJavaFileObject(URI.create("string:///" + name), JavaFileObject.Kind.SOURCE) {
+          override def getCharContent(ignoreEncodingErrors: Boolean): CharSequence = content
+        }
       }
       val javac = compiler.getTask(null, fileManager, null, null, null,
         fileObjects).asInstanceOf[JavacTaskImpl]
