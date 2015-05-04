@@ -314,8 +314,20 @@ $ ->
         .attr("x", (d) -> d.x)
         .attr("y", (d) -> d.y)
 
-    d3.json jsonAddress, (json) ->
-      nodes = json.nodes
+    data = (json) ->
+      pNodesByName = {}
+      pNodesByName[node.name] = node for node in force.nodes()
+
+      copyLayout = (s, d) ->
+        if ("x" of s) then d["x"] = s["x"]
+        if ("y" of s) then d["y"] = s["y"]
+        if ("px" of s) then d["px"] = s["px"]
+        if ("py" of s) then d["py"] = s["py"]
+        if ("fixed" of s) then d["fixed"] = s["fixed"]
+        if ("weight" of s) then d["weight"] = s["weight"]
+        d
+
+      nodes = ((if (node.name of pNodesByName) then copyLayout(pNodesByName[node.name], node) else node) for node in json.nodes)
       edges = json.edges
 
       force
@@ -405,19 +417,26 @@ $ ->
 
       updateSvg(nodes, edges)
 
-  clearSvg = ->
-    $("#chart").empty()
+    optimized = () -> $(".check-optimized").is(":checked")
+    loadData = () -> d3.json jsonAddress(optimized()), (json) -> data(json)
 
-  jsonAddress = (jsonBaseAddress, version) -> (if not not version then version + "/" else "") + jsonBaseAddress
+    $(".check-optimized").on "click", ->
+      loadData()
 
-  displaySvg = (jsonBaseAddress, optimized) ->
+    loadData()
+
+
+  displaySvg = (jsonBaseAddress) ->
     clearSvg()
-    makeSvg(jsonAddress(jsonBaseAddress, if optimized then "" else "0"))
+    makeSvg (optimized) ->
+      version = (optimized) -> if optimized then "" else "0"
+      jsonAddress = (jsonBaseAddress, version) -> (if not not version then version + "/" else "") + jsonBaseAddress
+      jsonAddress(jsonBaseAddress, version(optimized))
 
   display = (optimized) -> clearSvg()
 
-  $(".check-optimized").on "click", ->
-    display($(".check-optimized").is(":checked"))
+  clearSvg = ->
+    $("#chart").empty()
 
   $(".custom-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
@@ -690,7 +709,7 @@ $ ->
           $(".optimization-status").text("")
           $(".check-optimized").prop("disabled", false)
           $(".check-optimized").prop("checked", true)
-          display(true)
+          display()
         error: (data) ->
           $(".optimization-status").removeClass((index, css) ->
             (css.match(/\btext-\S+/g) || []).join(' ')
@@ -699,46 +718,47 @@ $ ->
           $(".optimization-status").text("Optimization failed!")
           $(".check-optimized").prop("checked", false)
           $(".check-optimized").prop("disabled", true)
-          display(false)
+          display()
       })
       $(".optimization-status").removeClass((index, css) ->
         (css.match(/\btext-\S+/g) || []).join(' ')
       )
       $(".optimization-status").addClass("text-warning")
       $(".optimization-status").text("Optimizing...")
-    display = (optimized) -> displaySvg("custom.json", optimized)
-    display($(".check-optimized").is(":checked"))
+    display = () -> displaySvg("custom.json")
+    display()
+    $("[rel='tooltip']").tooltip()
 
   $(".packages-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-packages-tab").addClass("active")
     $(".gauges").remove()
-    display = (optimized) -> displaySvg("packages.json", optimized)
-    display($(".check-optimized").is(":checked"))
+    display = () -> displaySvg("packages.json")
+    display()
     $("[rel='tooltip']").tooltip()
 
   $(".package-imports-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-imports-tab").addClass("active")
     $(".gauges").remove()
-    display = (optimized) -> displaySvg("pkgImports.json", optimized)
-    display($(".check-optimized").is(":checked"))
+    display = () -> displaySvg("pkgImports.json")
+    display()
     $("[rel='tooltip']").tooltip()
 
   $(".package-calls-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-package-calls-tab").addClass("active")
     $(".gauges").remove()
-    display = (optimized) -> displaySvg("pkgCalls.json", optimized)
-    display($(".check-optimized").is(":checked"))
+    display = () -> displaySvg("pkgCalls.json")
+    display()
     $("[rel='tooltip']").tooltip()
 
   $(".class-calls-button").on "click", (event) ->
     $(".nav-graph-detail-level").find("*").removeClass("active")
     $(".nav-graph-class-calls-tab").addClass("active")
     $(".gauges").remove()
-    display = (optimized) -> displaySvg("classCalls.json", optimized)
-    display($(".check-optimized").is(":checked"))
+    display = () -> displaySvg("classCalls.json")
+    display()
     $("[rel='tooltip']").tooltip()
 
   jsRoutes.controllers.ShowGraph.versionsJson($("#projectName").text()).ajax({
@@ -749,6 +769,6 @@ $ ->
       $(".check-optimized").prop("disabled", true)
   })
 
-  display = (optimized) -> displaySvg("packages.json", optimized)
-  display($(".check-optimized").is(":checked"))
+  display = () -> displaySvg("packages.json")
+  display()
   $("[rel='tooltip']").tooltip()
